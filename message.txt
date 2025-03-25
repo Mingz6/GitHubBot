@@ -1,0 +1,2 @@
+Create a flask app with templates/index.html using DuckDuckGo deep research agent. When the user search for something on the search bar. Try to search the GitHub Repo and return max 5 results use duckduckgo_search for this.
+

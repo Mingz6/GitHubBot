@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Repository Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .search-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .search-box {
+            padding: 10px;
+            width: 60%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .search-button {
+            padding: 10px 20px;
+            background-color: #0366d6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .search-button:hover {
+            background-color: #0056b3;
+        }
+        .search-options {
+            margin-top: 15px;
+        }
+        .select-count {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .results {
+            margin-top: 30px;
+        }
+        .result-item {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .result-title {
+            font-size: 18px;
+            color: #0366d6;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .result-url {
+            color: #6c757d;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .result-description {
+            margin-top: 8px;
+        }
+        .no-results {
+            text-align: center;
+            color: #6c757d;
+            margin-top: 30px;
+        }
+        .result-count {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>GitHub Repository Search</h1>
+    
+    <div class="search-container">
+        <form method="POST" action="/">
+            <input type="text" name="query" class="search-box" placeholder="Search GitHub repositories..." value="{{ query }}">
+            <button type="submit" class="search-button">Search</button>
+            
+            <div class="search-options">
+                <label for="result-count">Show results: </label>
+                <select name="result_count" id="result-count" class="select-count">
+                    <option value="5" {% if result_count == 5 %}selected{% endif %}>5</option>
+                    <option value="10" {% if result_count == 10 %}selected{% endif %}>10</option>
+                    <option value="15" {% if result_count == 15 %}selected{% endif %}>15</option>
+                    <option value="20" {% if result_count == 20 %}selected{% endif %}>20</option>
+                    <option value="30" {% if result_count == 30 %}selected{% endif %}>30</option>
+                </select>
+            </div>
+        </form>
+    </div>
+    
+    <div class="results">
+        {% if results %}
+            <h2>Search Results</h2>
+            <div class="result-count">Showing {{ results|length }} repositories</div>
+            {% for result in results %}
+                <div class="result-item">
+                    <a href="{{ result.url }}" class="result-title" target="_blank">{{ result.title }}</a>
+                    <div class="result-url">{{ result.url }}</div>
+                    <div class="result-description">{{ result.description }}</div>
+                </div>
+            {% endfor %}
+        {% elif query %}
+            <div class="no-results">No GitHub repositories found for your search.</div>
+        {% endif %}
+    </div>
+</body>
+</html>

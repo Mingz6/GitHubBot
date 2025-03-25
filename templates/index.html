@@ -80,6 +80,31 @@
             font-size: 14px;
             color: #555;
         }
+        .search-info {
+            margin: 10px 0;
+            font-size: 14px;
+            color: #555;
+            font-style: italic;
+        }
+        .search-tips {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px 15px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .search-tips h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .search-tips p {
+            margin: 5px 0;
+        }
+        .search-tips ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
     </style>
 </head>
 <body>
@@ -101,12 +126,29 @@
                 </select>
             </div>
         </form>
+        
+        <div class="search-tips">
+            <h3>Search Tips</h3>
+            <p>You can search in multiple ways:</p>
+            <ul>
+                <li><strong>Keyword search:</strong> Enter any terms to search for repositories</li>
+                <li><strong>Username/Repository format:</strong> 
+                    <ul>
+                        <li>Direct format: <code>username/repository</code> (e.g., <code>microsoft/vscode</code>)</li>
+                        <li>Natural language: <code>user username repo repository</code> (e.g., <code>user microsoft repo vscode</code>)</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
     </div>
     
     <div class="results">
         {% if results %}
             <h2>Search Results</h2>
             <div class="result-count">Showing {{ results|length }} repositories</div>
+            {% if search_type == "username_repo" %}
+                <div class="search-info">Searched for specific username/repository pattern</div>
+            {% endif %}
             {% for result in results %}
                 <div class="result-item">
                     <a href="{{ result.url }}" class="result-title" target="_blank">{{ result.title }}</a>

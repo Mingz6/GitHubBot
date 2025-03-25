@@ -1,0 +1,8 @@
+﻿.vs
+.vscode
+.idea
+
+.DS_Store
+
+config.json
+__pycache__

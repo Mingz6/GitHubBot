@@ -1,11 +1,19 @@
 import warnings
 import os
+import json
 
 warnings.filterwarnings("ignore")
 from together import Together
 
-# Get Client
-your_api_key = "9806a2601560024637df1e4acd804862faa67e08637db6598d920b64eebba43e"
+# Load configuration from config.json
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    with open(config_path, "r") as f:
+        return json.load(f)
+
+# Get API key from config
+config = load_config()
+your_api_key = config["together_ai_token"]
 client = Together(api_key=your_api_key)
 
 

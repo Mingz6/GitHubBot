@@ -1,14 +1,20 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, url_for, send_from_directory
 import requests
 from bs4 import BeautifulSoup
 from agents import SummarizerAgent, InsightAgent, RecommenderAgent, QuestionGeneratorAgent
 from github_utils import get_repo_content, get_repo_structure, get_repo_metadata, is_github_url
+import os
 
 app = Flask(__name__)
 summarizer = SummarizerAgent()
 insight_agent = InsightAgent()
 recommender_agent = RecommenderAgent()
 question_generator = QuestionGeneratorAgent()
+
+@app.route('/templates/<path:filename>')
+def serve_template_file(filename):
+    """Serve static files from the templates directory."""
+    return send_from_directory(os.path.join(app.root_path, 'templates'), filename)
 
 @app.route("/", methods=["GET", "POST"])
 def index():

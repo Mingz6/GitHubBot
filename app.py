@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, url_for, send_from_directory
 import requests
 from bs4 import BeautifulSoup
-from agents import SummarizerAgent, InsightAgent, RecommenderAgent, QuestionGeneratorAgent
+from agents import SummarizerAgent, InsightAgent, RecommenderAgent, QuestionGeneratorAgent, CLISetupAgent
 from github_utils import get_repo_content, get_repo_structure, get_repo_metadata, is_github_url
 import os
 
@@ -10,6 +10,7 @@ summarizer = SummarizerAgent()
 insight_agent = InsightAgent()
 recommender_agent = RecommenderAgent()
 question_generator = QuestionGeneratorAgent()
+cli_setup_agent = CLISetupAgent()
 
 @app.route('/templates/<path:filename>')
 def serve_template_file(filename):
@@ -130,6 +131,12 @@ def workflow():
         repo_content = get_repo_content(repo_url)
         if "error" in repo_content:
             return jsonify({"error": repo_content["error"]}), 500
+        
+        # Get repository metadata
+        repo_metadata = get_repo_metadata(repo_url)
+        # Ensure repo_metadata has the URL
+        if "url" not in repo_metadata:
+            repo_metadata["url"] = repo_url
             
         # Step 2: Generate summaries
         summaries = {}
@@ -142,6 +149,15 @@ def workflow():
                 
             summary = summarizer.process(content_for_summary)
             summaries[filename] = summary
+        
+        # New Step: Generate CLI setup instructions
+        try:
+            cli_setup = cli_setup_agent.generate_setup_instructions(repo_content, repo_metadata)
+            if not cli_setup or len(cli_setup.strip()) < 10:
+                cli_setup = "Sorry, couldn't generate setup instructions for this repository."
+        except Exception as e:
+            print(f"Error in CLI setup generation: {str(e)}")
+            cli_setup = "Error generating setup instructions. Please check the repository and try again."
             
         # Step 3: Generate insights
         summary_texts = list(summaries.values())
@@ -158,7 +174,6 @@ def workflow():
         )
         
         # Step 6: Generate questions
-        repo_metadata = get_repo_metadata(repo_url)
         repo_name = repo_metadata.get("name", "GitHub Repository")
         questions = question_generator.generate_questions(
             repo_name, "repository", repo_url
@@ -166,6 +181,7 @@ def workflow():
         
         return jsonify({
             "summaries": summaries,
+            "cli_setup": cli_setup,
             "insights": insights,
             "recommendations": recommendations,
             "next_area": next_area,

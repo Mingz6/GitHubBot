@@ -157,7 +157,7 @@ class QuestionGeneratorAgent:
         self.client = Together(api_key=your_api_key)
         
     def generate_questions(self, content, category, source):
-        with open("/Users/mingz/code/GitHubBot/OldCode/PromptTemplate.json", "r") as f:
+        with open("/Users/mingz/code/GitHubBot/PromptTemplate.json", "r") as f:
             import json
             prompt_data = json.load(f)
             template = prompt_data["prompt_template"]
@@ -169,3 +169,83 @@ class QuestionGeneratorAgent:
         )
         
         return prompt_llm(prompt)
+
+
+class CLISetupAgent:
+    def __init__(self):
+        self.client = Together(api_key=your_api_key)
+        
+    def generate_setup_instructions(self, repo_content, repo_metadata):
+        """Generate step-by-step CLI instructions to set up the environment for a repository."""
+        language = repo_metadata.get("language", "")
+        repo_name = repo_metadata.get("name", "")
+        repo_url = repo_metadata.get("url", "")
+        
+        # Collect all potential setup files in the repo
+        setup_files = {}
+        common_setup_files = [
+            "requirements.txt", "package.json", "setup.py", "Dockerfile", 
+            "docker-compose.yml", ".env.example", "Makefile", "README.md"
+        ]
+        
+        for filename, content in repo_content.items():
+            if filename in common_setup_files or filename.endswith((".yml", ".yaml", ".sh", ".bat")):
+                setup_files[filename] = content
+        
+        # Default setup steps if no specific files are found
+        default_steps = f"""
+1. Clone the repository:
+   ```
+   git clone {repo_url}
+   cd {repo_name}
+   ```
+
+2. Check the repository structure:
+   ```
+   ls -la
+   ```
+
+3. Read the README file for specific instructions:
+   ```
+   cat README.md
+   ```
+        """
+                
+        # If we have no setup files, provide basic instructions
+        if not setup_files:
+            return default_steps
+        
+        # Create a prompt with all the relevant information
+        prompt = f"""
+        SYSTEM: You are an expert DevOps engineer who provides clear CLI setup instructions.
+        
+        INSTRUCTIONS:
+        • Generate step-by-step CLI instructions to set up a development environment for the given repository
+        • The repository is named "{repo_name}" and primarily uses {language if language else "unknown language"}
+        • Include commands for cloning, installing dependencies, and basic configuration
+        • Format your response as a numbered list with clear command-line instructions
+        • Include comments explaining what each command does
+        • Focus on practical, executable commands that work on both macOS/Linux and Windows where possible
+        • If different platforms require different commands, clearly indicate which is for which
+        • Mention any prerequisites that need to be installed (like Python, Node.js, Docker, etc.)
+        
+        REPOSITORY INFORMATION:
+        Name: {repo_name}
+        Primary Language: {language if language else "Not specified"}
+        URL: {repo_url}
+        
+        RELEVANT SETUP FILES:
+        {chr(10).join([f"--- {name} ---{chr(10)}{content[:300]}..." for name, content in setup_files.items()])}
+        
+        Provide a step-by-step CLI setup guide with exactly 5-10 commands:
+        """
+        
+        try:
+            result = prompt_llm(prompt)
+            # Check if result is empty or invalid
+            if not result or len(result.strip()) < 10:
+                return default_steps
+            return result
+        except Exception as e:
+            print(f"Error generating CLI setup: {str(e)}")
+            return default_steps

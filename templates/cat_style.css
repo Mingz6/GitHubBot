@@ -133,6 +133,23 @@ h1::before, h1::after {
     border: 1px dashed var(--cat-primary);
 }
 
+/* CLI setup instructions styling */
+.cli-setup pre.cli-instructions {
+    background-color: var(--cat-light);
+    color: var(--cat-dark);
+    padding: 15px;
+    border-radius: 10px;
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
+    border-left: 5px solid var(--cat-primary);
+    overflow-x: auto;
+}
+
+.cli-setup pre.cli-instructions::before {
+    content: "🐈 $ ";
+    color: var(--cat-primary);
+}
+
 /* Footer styles */
 footer {
     color: var(--cat-accent);

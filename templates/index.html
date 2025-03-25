@@ -57,6 +57,15 @@
                 </div>
             </div>
             
+            <!-- New card for CLI setup instructions -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Purr-fect Setup Instructions</h5>
+                    <img src="https://cdn-icons-png.flaticon.com/512/1864/1864503.png" class="cat-corner cat-top-right">
+                    <div id="cliSetup" class="cli-setup"></div>
+                </div>
+            </div>
+            
             <div class="card mb-3">
                 <div class="card-body">
                     <h5 class="card-title">Key In-sights</h5>
@@ -142,6 +151,14 @@
                             </div>
                         `;
                     });
+                    
+                    // Display CLI setup instructions
+                    const setupDiv = document.getElementById('cliSetup');
+                    if (data.cli_setup && data.cli_setup.trim().length > 0) {
+                        setupDiv.innerHTML = `<pre class="cli-instructions">${data.cli_setup}</pre>`;
+                    } else {
+                        setupDiv.innerHTML = `<p class="text-muted">No setup instructions available for this repository.</p>`;
+                    }
                     
                     // Display insights
                     document.getElementById('insights').innerHTML = `<ul class="paw-list">${data.insights.split('\n').map(insight => 

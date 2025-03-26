@@ -12,7 +12,10 @@ A Flask web application that allows users to search for GitHub repositories usin
 
 ## Screenshots
 
-*[Add screenshots of your application here]*
+### Demo Video
+![Demo](Docs/demo.gif)
+
+*Note: The demo above shows the basic functionality of the application. If your browser doesn't support MOV playback in markdown, please view the file directly in the Docs folder.*
 
 ## Setup and Installation
 
@@ -30,6 +33,8 @@ You can search for specific repositories using these formats:
 
 ### Customizing Results
 Use the dropdown menu to select how many search results you want to see per page.
+
+For a visual walkthrough of these features, check out the [demo video](#demo-video) above.
 
 ## Development
 

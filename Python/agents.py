@@ -165,7 +165,8 @@ class QuestionGeneratorAgent:
         self.client = Together(api_key=your_api_key)
         
     def generate_questions(self, content, category, source):
-        with open("/Users/mingz/code/GitHubBot/PromptTemplate.json", "r") as f:
+        prompt_template_path = os.path.join(os.path.dirname(__file__), "PromptTemplate.json")
+        with open(prompt_template_path, "r") as f:
             import json
             prompt_data = json.load(f)
             template = prompt_data["prompt_template"]

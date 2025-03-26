@@ -14,34 +14,9 @@ A Flask web application that allows users to search for GitHub repositories usin
 
 *[Add screenshots of your application here]*
 
-## Installation
+## Setup and Installation
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/GitHubBot.git
-   cd GitHubBot
-   ```
-
-2. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-
-3. Run the application:
-   ```
-   python app.py
-   ```
-
-4. Open your browser and navigate to:
-   ```
-   http://localhost:5000
-   ```
-
-## Required Dependencies
-
-- Flask 2.3.3
-- Requests 2.31.0
-- DuckDuckGo-Search 3.0.2
+For detailed setup instructions and environment configuration, please refer to [Setup Guide](/Docs/SetupEnvironment.md).
 
 ## Usage
 
@@ -59,9 +34,8 @@ Use the dropdown menu to select how many search results you want to see per page
 ## Development
 
 The application structure:
-- `app.py`: Main Flask application logic and API integration
+- `Python/app.py`: Main Flask application logic and API integration
 - `templates/index.html`: Frontend HTML template with embedded styles
-- `requirements.txt`: Python dependencies
 
 ## Contributing
 

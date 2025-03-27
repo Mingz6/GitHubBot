@@ -29,11 +29,34 @@ def normalize_url(url: str, base_url: str) -> str:
         return url
 
 def clean_text(text: str) -> str:
-    """Clean extracted text by removing extra whitespace and special characters."""
-    # Remove extra whitespace
-    text = re.sub(r'\s+', ' ', text)
-    # Remove special Unicode characters
-    text = re.sub(r'[^\x00-\x7F]+', ' ', text)
+    """
+    Clean extracted text by removing extra whitespace and normalizing formatting.
+    Prevents issues with character spacing and formatting that can cause RAG output problems.
+    """
+    if not text:
+        return ""
+    
+    # First, normalize newlines
+    text = text.replace('\r\n', '\n')
+    
+    # Fix common spacing issues where text is s p a c e d  o u t
+    # This pattern looks for single character followed by space pattern
+    spaced_out_pattern = r'(?<=[a-zA-Z])\s(?=[a-zA-Z](\s[a-zA-Z])+)'
+    while re.search(spaced_out_pattern, text):
+        text = re.sub(spaced_out_pattern, '', text)
+    
+    # Replace multiple spaces with single space
+    text = re.sub(r' +', ' ', text)
+    
+    # Replace multiple newlines with double newlines to preserve paragraph structure
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    
+    # Clean up any remaining non-printable or control characters
+    text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
+    
+    # Convert any remaining unicode to ASCII equivalent where possible, or remove if not possible
+    text = ''.join(c if ord(c) < 128 else ' ' for c in text)
+    
     return text.strip()
 
 def extract_webpage_content(url: str, max_pages: int = 10, max_links_per_page: int = 10) -> Dict:
@@ -160,27 +183,56 @@ def extract_relevant_sections(content: Dict, question: str) -> Tuple[str, List[s
     source_urls = []
     
     for url, page_data in content.items():
-        if "error" in page_data:
+        if isinstance(page_data, dict) and "error" in page_data:
+            continue
+        
+        # Handle different page_data formats
+        if isinstance(page_data, dict) and "content" in page_data:
+            page_text = page_data["content"]
+        elif isinstance(page_data, str):
+            page_text = page_data
+        else:
             continue
             
-        page_text = page_data["content"]
-        
         # Split into paragraphs
         paragraphs = re.split(r'\n+', page_text)
         
+        # Store paragraphs with their relevance scores
+        scored_paragraphs = []
+        
         for paragraph in paragraphs:
-            # Check if paragraph is long enough and contains keywords
+            # Check if paragraph is long enough
             if len(paragraph) < 50:
                 continue
                 
             paragraph_words = set(re.findall(r'\w+', paragraph.lower()))
             matching_keywords = paragraph_words.intersection(question_keywords)
             
-            # If the paragraph contains at least 2 keywords or 30% of keywords, consider it relevant
-            if len(matching_keywords) >= 2 or (len(question_keywords) > 0 and len(matching_keywords) / len(question_keywords) >= 0.3):
-                relevant_sections.append(paragraph)
-                if url not in source_urls:
-                    source_urls.append(url)
+            # Calculate relevance score based on keyword matches and density
+            score = 0
+            if len(question_keywords) > 0:
+                # Base score from percentage of matched keywords
+                keyword_match_ratio = len(matching_keywords) / len(question_keywords)
+                # Bonus for high density of keywords
+                keyword_density = len(matching_keywords) / max(1, len(paragraph_words))
+                score = (keyword_match_ratio * 0.7) + (keyword_density * 0.3)
+            
+            # Only consider paragraphs with sufficient relevance
+            if score > 0.2 or len(matching_keywords) >= 2:
+                scored_paragraphs.append((paragraph, score))
+        
+        # Sort paragraphs by relevance score (descending)
+        scored_paragraphs.sort(key=lambda x: x[1], reverse=True)
+        
+        # Take only the top relevant paragraphs (max 3 per page)
+        for para, score in scored_paragraphs[:3]:
+            relevant_sections.append(para)
+            if url not in source_urls:
+                source_urls.append(url)
+    
+    # Limit the total number of sections to prevent token limit issues
+    if len(relevant_sections) > 10:
+        relevant_sections = relevant_sections[:10]
     
     # Combine relevant sections
     combined_content = "\n\n".join(relevant_sections)

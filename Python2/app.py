@@ -4,21 +4,50 @@ from bs4 import BeautifulSoup
 from agents import SummarizerAgent, InsightAgent, RecommenderAgent, QuestionGeneratorAgent, CLISetupAgent, WebsiteContentSummarizer, QuestionAnswerer, WebsiteSummarizer
 from github_utils import get_repo_content, get_repo_structure, get_repo_metadata, is_github_url
 from web_utils import extract_webpage_content, extract_relevant_sections, is_valid_url
+from rag_utils import RAGProcessor  # Import our new RAG processor
 import os
 import json
 
+# Initialize Flask app
 app = Flask(__name__)
-summarizer = SummarizerAgent()
-insight_agent = InsightAgent()
-recommender_agent = RecommenderAgent()
-question_generator = QuestionGeneratorAgent()
-cli_setup_agent = CLISetupAgent()
-website_summarizer = WebsiteContentSummarizer()
-question_answerer = QuestionAnswerer()
-website_overview = WebsiteSummarizer()
+
+# Read configuration for local development
+def load_config():
+    try:
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as config_file:
+                return json.load(config_file)
+    except Exception as e:
+        print(f"Error loading config.json: {str(e)}")
+    return {}
+
+# Initialize config
+config = load_config()
+
+# Set model from config or use default
+model_name = config.get("model", "mistralai/Mixtral-8x7B-Instruct-v0.1")
+
+# Initialize agents
+summarizer = SummarizerAgent(model=model_name)
+insight_agent = InsightAgent(model=model_name)
+recommender_agent = RecommenderAgent(model=model_name)
+question_generator = QuestionGeneratorAgent(model=model_name)
+cli_setup_agent = CLISetupAgent(model=model_name)
+website_summarizer = WebsiteContentSummarizer(model=model_name)
+question_answerer = QuestionAnswerer(model=model_name)
+website_overview = WebsiteSummarizer(model=model_name)
+
+# Initialize the RAG processor
+rag_processor = RAGProcessor(model_name=model_name)
 
 # Create a cache for website content to avoid repeated scraping
 website_cache = {}
+
+# Add a route for serving static files - crucial for Hugging Face Spaces
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('static', filename)
 
 @app.route('/templates/<path:filename>')
 def serve_template_file(filename):
@@ -201,7 +230,7 @@ def workflow():
 
 @app.route("/extract_website", methods=["POST"])
 def extract_website():
-    """Extract content from a website URL."""
+    """Extract content from a website URL and process with RAG."""
     website_url = request.json.get("website_url", "")
     
     if not website_url or not is_valid_url(website_url):
@@ -213,7 +242,7 @@ def extract_website():
             content = website_cache[website_url]
         else:
             # Extract content from the website
-            max_pages = int(request.form.get('max_pages', 10))
+            max_pages = int(request.json.get('max_pages', 10))
             content = extract_webpage_content(website_url, max_pages=max_pages)
             
             # Cache the content
@@ -221,6 +250,11 @@ def extract_website():
             
         if "error" in content:
             return jsonify({"error": content["error"]}), 500
+        
+        # Process the content with RAG
+        rag_result = rag_processor.process_website_content(website_url, content)
+        if "error" in rag_result:
+            print(f"RAG processing warning: {rag_result['error']}")
             
         # Generate an overview of the website
         overview = website_overview.create_website_overview(content)
@@ -232,7 +266,9 @@ def extract_website():
             "status": "success",
             "overview": overview,
             "page_count": len(content),
-            "sample_pages": page_urls
+            "sample_pages": page_urls,
+            "rag_enabled": "error" not in rag_result,
+            "rag_status": rag_result.get("message", "RAG processing complete")
         })
         
     except Exception as e:
@@ -240,10 +276,11 @@ def extract_website():
 
 @app.route("/answer_question", methods=["POST"])
 def answer_question():
-    """Answer a user's question based on website content."""
+    """Answer a user's question based on website content using RAG."""
     data = request.json
     website_url = data.get("website_url", "")
     question = data.get("question", "")
+    use_rag = data.get("use_rag", True)  # Default to using RAG
     
     if not website_url or not is_valid_url(website_url) or not question:
         return jsonify({"error": "Valid website URL and question required"}), 400
@@ -254,7 +291,7 @@ def answer_question():
             content = website_cache[website_url]
         else:
             # Extract content from the website
-            max_pages = int(request.form.get('max_pages', 10))
+            max_pages = int(request.json.get('max_pages', 10))
             content = extract_webpage_content(website_url, max_pages=max_pages)
             
             # Cache the content
@@ -263,21 +300,51 @@ def answer_question():
         if "error" in content:
             return jsonify({"error": content["error"]}), 500
             
-        # Extract relevant sections for the question
-        relevant_content, source_urls = extract_relevant_sections(content, question)
+        # If RAG is enabled and the website hasn't been processed yet, process it now
+        if use_rag and website_url not in rag_processor.vectorstores:
+            rag_result = rag_processor.process_website_content(website_url, content)
+            if "error" in rag_result:
+                print(f"Warning: Could not process with RAG: {rag_result['error']}")
+                use_rag = False
+                
+        if use_rag:
+            # Use RAG to retrieve relevant content
+            retrieval_result = rag_processor.retrieve_relevant_content(website_url, question, top_k=3)
+            
+            if "error" in retrieval_result:
+                # Fall back to traditional method if RAG retrieval fails
+                print(f"RAG retrieval failed: {retrieval_result['error']}, falling back to traditional method")
+                relevant_content, source_urls = extract_relevant_sections(content, question)
+                use_rag = False
+            else:
+                # Format the retrieved content for the question answerer
+                retrieved_docs = retrieval_result["results"]
+                relevant_content = "\n\n".join([doc["content"] for doc in retrieved_docs])
+                source_urls = [doc["source"] for doc in retrieved_docs]
+        else:
+            # Traditional method: Extract relevant sections for the question
+            relevant_content, source_urls = extract_relevant_sections(content, question)
         
         if not relevant_content:
             return jsonify({
                 "answer": "Sorry, no information found on the website that answers your question.",
-                "sources": []
+                "sources": [],
+                "method": "rag" if use_rag else "traditional"
             })
+        
+        # Limit content size to avoid token limits
+        max_chars = 10000
+        if len(relevant_content) > max_chars:
+            print(f"Truncating content from {len(relevant_content)} to {max_chars} characters")
+            relevant_content = relevant_content[:max_chars] + "... [content truncated due to length]"
             
         # Generate an answer to the question
         answer = question_answerer.answer_question(question, relevant_content, source_urls)
         
         return jsonify({
             "answer": answer,
-            "sources": source_urls[:3]  # Return up to 3 source URLs
+            "sources": source_urls[:3],  # Return up to 3 source URLs
+            "method": "rag" if use_rag else "traditional"
         })
         
     except Exception as e:
@@ -285,10 +352,48 @@ def answer_question():
 
 @app.route("/clear_cache", methods=["POST"])
 def clear_cache():
-    """Clear the website content cache."""
+    """Clear the website content cache and RAG data."""
     global website_cache
-    website_cache = {}
-    return jsonify({"status": "Cache cleared successfully"})
+    website_url = request.json.get("website_url", None)
+    
+    if website_url:
+        # Clear specific website from cache
+        if website_url in website_cache:
+            del website_cache[website_url]
+        # Also clear RAG data for this website
+        rag_result = rag_processor.clear_website_data(website_url)
+        return jsonify({"status": "Cache and RAG data cleared for specific website"})
+    else:
+        # Clear all cache
+        website_cache = {}
+        # Clear all RAG data
+        rag_result = rag_processor.clear_website_data()
+        return jsonify({"status": "All cache and RAG data cleared successfully"})
+
+# New endpoint for RAG-specific operations
+@app.route("/rag_status", methods=["POST"])
+def rag_status():
+    """Get status of RAG processing for a website."""
+    website_url = request.json.get("website_url", "")
+    
+    if not website_url:
+        return jsonify({"error": "Website URL is required"}), 400
+        
+    # Check if website has been processed with RAG
+    if website_url in rag_processor.vectorstores:
+        data = rag_processor.vectorstores[website_url]
+        return jsonify({
+            "status": "processed",
+            "document_count": data.get("document_count", 0),
+            "message": f"Website content has been processed with RAG ({data.get('document_count', 0)} chunks)"
+        })
+    else:
+        return jsonify({
+            "status": "not_processed",
+            "message": "Website has not been processed with RAG yet"
+        })
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5009, host="0.0.0.0")
+    # Use environment variables for port if available (needed for Hugging Face)
+    port = int(os.environ.get('PORT', 5009))
+    app.run(debug=False, host='0.0.0.0', port=port)

@@ -213,7 +213,8 @@ def extract_website():
             content = website_cache[website_url]
         else:
             # Extract content from the website
-            content = extract_webpage_content(website_url)
+            max_pages = int(request.form.get('max_pages', 10))
+            content = extract_webpage_content(website_url, max_pages=max_pages)
             
             # Cache the content
             website_cache[website_url] = content
@@ -253,7 +254,8 @@ def answer_question():
             content = website_cache[website_url]
         else:
             # Extract content from the website
-            content = extract_webpage_content(website_url)
+            max_pages = int(request.form.get('max_pages', 10))
+            content = extract_webpage_content(website_url, max_pages=max_pages)
             
             # Cache the content
             website_cache[website_url] = content

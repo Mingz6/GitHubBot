@@ -36,14 +36,14 @@ def clean_text(text: str) -> str:
     text = re.sub(r'[^\x00-\x7F]+', ' ', text)
     return text.strip()
 
-def extract_webpage_content(url: str, max_pages: int = 5, max_links_per_page: int = 10) -> Dict:
+def extract_webpage_content(url: str, max_pages: int = 10, max_links_per_page: int = 10) -> Dict:
     """
     Extract content from a website by crawling its pages.
     Returns a dictionary with page URLs as keys and their content as values.
     
     Args:
         url: The starting URL
-        max_pages: Maximum number of pages to crawl
+        max_pages: Maximum number of pages to crawl (default: 10)
         max_links_per_page: Maximum number of links to follow from each page
     """
     if not is_valid_url(url):
@@ -119,13 +119,18 @@ def extract_webpage_content(url: str, max_pages: int = 5, max_links_per_page: in
                 # Be gentle to the website - small delay between requests
                 time.sleep(0.5)
                 
+                # Print progress update every 10 pages
+                if page_count % 10 == 0:
+                    print(f"Crawled {page_count} pages. Found {len(extracted_content)} pages with content.")
+                
             except Exception as e:
                 print(f"Error processing {current_url}: {str(e)}")
                 continue
         
         if not extracted_content:
             return {"error": "No content could be extracted from the website"}
-            
+        
+        print(f"Crawl completed: Visited {len(visited_urls)} pages, extracted content from {len(extracted_content)} pages.")
         return extracted_content
         
     except Exception as e:

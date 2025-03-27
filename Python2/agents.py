@@ -11,17 +11,15 @@ def load_config():
     with open(config_path, "r") as f:
         return json.load(f)
 
-# Get API key from config
+# Get API key and model from config
 config = load_config()
 your_api_key = config["together_ai_token"]
+model = config.get("model", "meta-llama/Meta-Llama-3-8B-Instruct-Lite")  # Use default if not in config
 client = Together(api_key=your_api_key)
 
 
 def prompt_llm(prompt, show_cost=False):
     # This function allows us to prompt an LLM via the Together API
-
-    # model
-    model = "meta-llama/Meta-Llama-3-8B-Instruct-Lite"
 
     # Calculate the number of tokens
     tokens = len(prompt.split())

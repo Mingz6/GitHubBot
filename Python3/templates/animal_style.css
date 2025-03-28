@@ -1,0 +1,352 @@
+/* Base Styles */
+:root {
+    --animal-primary: #4B7F52;      /* Forest green */
+    --animal-secondary: #A7C957;    /* Light green */
+    --animal-accent: #6A994E;       /* Medium green */
+    --animal-dark: #386641;         /* Dark green */
+    --animal-light: #F2FDE4;        /* Light cream */
+}
+
+body {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    background-color: var(--animal-light);
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    background-image: url('https://www.transparenttextures.com/patterns/natural-paper.png');
+}
+
+.loading {
+    display: none;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.card {
+    margin-bottom: 20px;
+    border-radius: 15px;
+    border: 2px solid var(--animal-accent);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: white;
+}
+
+.card-body {
+    position: relative;
+}
+
+/* Card titles with randomly selected animal emojis */
+.card-title {
+    color: var(--animal-dark);
+    font-weight: bold;
+    display: inline-block;
+}
+
+/* Each card title will have a different animal icon */
+.card:nth-of-type(1) .card-title::before {
+    content: "🦁 ";  /* Lion */
+}
+
+.card:nth-of-type(2) .card-title::before {
+    content: "🐘 ";  /* Elephant */
+}
+
+.card:nth-of-type(3) .card-title::before {
+    content: "🦒 ";  /* Giraffe */
+}
+
+.card:nth-of-type(4) .card-title::before {
+    content: "🐼 ";  /* Panda */
+}
+
+.card:nth-of-type(5) .card-title::before {
+    content: "🦓 ";  /* Zebra */
+}
+
+.card:nth-of-type(6) .card-title::before {
+    content: "🦊 ";  /* Fox */
+}
+
+.card:nth-of-type(7) .card-title::before {
+    content: "🐨 ";  /* Koala */
+}
+
+.btn {
+    display: inline-block;
+    padding: 10px 16px;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-primary {
+    color: #fff;
+    background-color: var(--animal-primary);
+    border-color: var(--animal-accent);
+    transition: all 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: var(--animal-accent);
+    border-color: var(--animal-dark);
+    transform: scale(1.05);
+}
+
+.btn-secondary {
+    color: var(--animal-dark);
+    background-color: #fafbfc;
+    border-color: #1b1f2326;
+    box-shadow: 0 1px 0 rgba(27,31,35,0.04);
+}
+
+.btn-secondary:hover {
+    background-color: #f3f4f6;
+    border-color: #1b1f2326;
+}
+
+/* Header with animal icons */
+h1 {
+    color: var(--animal-accent);
+    text-align: center;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+h1::before {
+    content: " 🦋 ";  /* Butterfly */
+}
+
+h1::after {
+    content: " 🦜 ";  /* Parrot */
+}
+
+.form-control, .form-select {
+    border: 2px solid var(--animal-secondary);
+    border-radius: 10px;
+    background-color: var(--animal-light);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--animal-primary);
+    box-shadow: 0 0 0 0.25rem rgba(75, 127, 82, 0.25);
+}
+
+.form-label {
+    color: var(--animal-dark);
+    font-weight: bold;
+}
+
+/* Animal icons for corners of cards */
+.animal-corner {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    opacity: 0.7;
+}
+
+.animal-top-right {
+    top: -25px;
+    right: -15px;
+    transform: rotate(45deg);
+}
+
+.spinner-border {
+    color: var(--animal-primary) !important;
+}
+
+/* Lists with animal-themed bullets */
+.animal-list {
+    list-style-type: none;
+    padding-left: 10px;
+}
+
+.animal-list li:nth-child(1)::before {
+    content: "🐢 ";  /* Turtle */
+    margin-right: 10px;
+}
+
+.animal-list li:nth-child(2)::before {
+    content: "🦆 ";  /* Duck */
+    margin-right: 10px;
+}
+
+.animal-list li:nth-child(3)::before {
+    content: "🦔 ";  /* Hedgehog */
+    margin-right: 10px;
+}
+
+.animal-list li:nth-child(4)::before {
+    content: "🦉 ";  /* Owl */
+    margin-right: 10px;
+}
+
+.animal-list li:nth-child(5)::before {
+    content: "🦡 ";  /* Badger */
+    margin-right: 10px;
+}
+
+.animal-list li:nth-child(n+6)::before {
+    content: "🦥 ";  /* Sloth */
+    margin-right: 10px;
+}
+
+#loading p {
+    color: var(--animal-accent);
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+#loading img {
+    width: 100px;
+    height: auto;
+}
+
+/* Random animal cursor */
+.animal-cursor {
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='48' viewport='0 0 100 100' style='fill:black;font-size:24px;'><text y='50%'>🐾</text></svg>") 16 0, auto;
+}
+
+/* Table Styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+}
+
+th, td {
+    padding: 8px 16px;
+    border: 1px solid #e1e4e8;
+    text-align: left;
+}
+
+th {
+    background-color: #f6f8fa;
+    font-weight: 600;
+}
+
+tr:nth-child(even) {
+    background-color: #f6f8fa;
+}
+
+/* Code Blocks */
+pre {
+    background-color: #f6f8fa;
+    border-radius: 6px;
+    padding: 16px;
+    overflow: auto;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #24292e;
+}
+
+code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 85%;
+    padding: 0.2em 0.4em;
+    margin: 0;
+    background-color: rgba(27,31,35,0.05);
+    border-radius: 3px;
+}
+
+/* Special styles for results section */
+#results pre {
+    background-color: var(--animal-light); 
+    padding: 15px; 
+    border-radius: 10px; 
+    border: 1px dashed var(--animal-primary);
+}
+
+/* CLI setup instructions styling */
+.cli-setup pre.cli-instructions {
+    background-color: var(--animal-light);
+    color: var(--animal-dark);
+    padding: 15px;
+    border-radius: 10px;
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
+    border-left: 5px solid var(--animal-primary);
+    overflow-x: auto;
+}
+
+.cli-setup pre.cli-instructions::before {
+    content: "🦝 $ ";  /* Raccoon */
+    color: var(--animal-primary);
+}
+
+/* Footer styles */
+footer {
+    color: var(--animal-accent);
+    margin-top: 2rem;
+}
+
+footer .fa-heart {
+    color: var(--animal-primary);
+}
+
+/* Animal emojis for footer */
+footer div i.fas.fa-dog:nth-of-type(1)::before {
+    content: "🦁";  /* Lion */
+}
+
+footer div i.fas.fa-bone:nth-of-type(1)::before {
+    content: "🐯";  /* Tiger */
+}
+
+footer div i.fas.fa-dog:nth-of-type(2)::before {
+    content: "🐻";  /* Bear */
+}
+
+footer div i.fas.fa-bone:nth-of-type(2)::before {
+    content: "🦧";  /* Orangutan */
+}
+
+footer div i.fas.fa-dog:nth-of-type(3)::before {
+    content: "🐺";  /* Wolf */
+}
+
+/* Utility Classes */
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-muted {
+    color: #6a737d;
+}
+
+.mb-0 {
+    margin-bottom: 0 !important;
+}
+
+.mt-0 {
+    margin-top: 0 !important;
+}
+
+.mb-1 {
+    margin-bottom: 0.25rem !important;
+}
+
+.mb-2 {
+    margin-bottom: 0.5rem !important;
+}
+
+.mb-3 {
+    margin-bottom: 1rem !important;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem !important;
+}
+
+.hidden {
+    display: none !important;
+}

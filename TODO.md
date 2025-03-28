@@ -2,8 +2,8 @@
 - [x] - Secrets management in new space
 - [x] - Add RAG to the work --> https://huggingface.co/spaces/AFischer1985/AI-RAG-Interface-to-Hub/tree/main
 
-- [ ] - Chat features
 - [ ] - email Q&A based on database/website/documents -> https://huggingface.co/spaces/AimlAPI/EmailAgent
+- [ ] - Chat features
 - [ ] - Code Review and Suggest --> https://github.com/semgrep/semgrep
 - [ ] - deep research --> https://github.com/jina-ai/node-DeepResearch
 

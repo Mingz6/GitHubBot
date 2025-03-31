@@ -29,10 +29,25 @@
             font-size: 14px;
             margin-top: 10px;
         }
+        /* Add text wrapping for all content sections */
+        pre {
+            white-space: pre-wrap;       /* CSS3 */
+            white-space: -moz-pre-wrap;  /* Firefox */
+            white-space: -pre-wrap;      /* Opera <7 */
+            white-space: -o-pre-wrap;    /* Opera 7 */
+            word-wrap: break-word;       /* IE & Chrome */
+            overflow-wrap: break-word;
+        }
+        /* Ensure all content sections wrap text properly */
+        #draftResult, #reviewResult, #policiesResult, 
+        #examplesResult, #sentimentResult, #analysisResult {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
     </style>
 </head>
 <body>
-    <div class="container mt-4">
+    <div class="container-fluid mt-4">
         <h1 class="text-center mb-4">Medical Email Processing System</h1>
         
         <div class="row">
@@ -68,14 +83,6 @@
             
             <!-- Analysis Section -->
             <div class="col-md-8">
-                <div class="card section-card">
-                    <div class="card-header">
-                        <h5>Email Analysis</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="analysisResult">No analysis yet.</div>
-                    </div>
-                </div>
                 
                 <div class="card section-card">
                     <div class="card-header">
@@ -131,6 +138,15 @@
                     </div>
                     <div class="card-body">
                         <div id="sentimentResult">No sentiment analysis yet.</div>
+                    </div>
+                </div>
+
+                <div class="card section-card">
+                    <div class="card-header">
+                        <h5>Email Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="analysisResult">No analysis yet.</div>
                     </div>
                 </div>
             </div>

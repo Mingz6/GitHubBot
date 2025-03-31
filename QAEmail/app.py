@@ -44,52 +44,52 @@ class EmailResponseRetriever:
         self.encoder = SentenceTransformer("all-MiniLM-L6-v2", use_auth_token=HGToken)
         # Sample email response examples with more casual tone
         self.examples = {
-            "medical_records": """
-                ORIGINAL EMAIL:
-                Hey there, I was hoping to get my medical records. What do I need to do?
+"medical_records": """
+ORIGINAL EMAIL:
+Hey there, I was hoping to get my medical records. What do I need to do?
 
-                MY RESPONSE:
-                Hi! Happy to help you get those records. We just need a few quick things:
-                1. Your signed OK (we'll send you the form)
-                2. A quick form to fill out
-                3. Your ID
-                Just upload everything to our secure portal and we'll take care of the rest! Let me know if you need help.
-            """,
-            "insurance_verification": """
-                ORIGINAL EMAIL:
-                Quick question - do you guys take Aetna insurance?
+MY RESPONSE:
+Hi! Happy to help you get those records. We just need a few quick things:
+1. Your signed OK (we'll send you the form)
+2. A quick form to fill out
+3. Your ID
+Just upload everything to our secure portal and we'll take care of the rest! Let me know if you need help.
+""",
+"insurance_verification": """
+ORIGINAL EMAIL:
+Quick question - do you guys take Aetna insurance?
 
-                MY RESPONSE:
-                Hey there! Yes, we work with Aetna and most other major insurance companies.
-                Could you shoot me your:
-                - Member ID
-                - Group number
-                I'll double-check everything and get back to you super quick (usually within a day).
-                Sound good?
-            """,
-            "appointment_scheduling": """
-                ORIGINAL EMAIL:
-                Something came up and I need to move my appointment. Help!
+MY RESPONSE:
+Hey there! Yes, we work with Aetna and most other major insurance companies.
+Could you shoot me your:
+- Member ID
+- Group number
+I'll double-check everything and get back to you super quick (usually within a day).
+Sound good?
+""",
+"appointment_scheduling": """
+ORIGINAL EMAIL:
+Something came up and I need to move my appointment. Help!
 
-                MY RESPONSE:
-                Hey! No worries at all - life happens! 😊
-                I've got a couple of spots open:
-                - Tuesday @ 2pm
-                - Wednesday morning at 10am
-                Just let me know what works better for you and I'll get it switched right away!
-            """,
-            "medication_refill": """
-                ORIGINAL EMAIL:
-                Running low on my meds - need a refill asap!
+MY RESPONSE:
+Hey! No worries at all - life happens! 😊
+I've got a couple of spots open:
+- Tuesday @ 2pm
+- Wednesday morning at 10am
+Just let me know what works better for you and I'll get it switched right away!
+""",
+"medication_refill": """
+ORIGINAL EMAIL:
+Running low on my meds - need a refill asap!
 
-                MY RESPONSE:
-                Hey! Thanks for the heads up about your meds. I'm on it!
-                Here's what's happening next:
-                1. We'll review your refill request today
-                2. Give your pharmacy a call
-                3. They should have it ready in 1-2 days
-                Need it sooner? Just let me know!
-            """,
+MY RESPONSE:
+Hey! Thanks for the heads up about your meds. I'm on it!
+Here's what's happening next:
+1. We'll review your refill request today
+2. Give your pharmacy a call
+3. They should have it ready in 1-2 days
+Need it sooner? Just let me know!
+""",
         }
         # Pre-compute embeddings for examples
         self.example_embeddings = {
@@ -120,30 +120,30 @@ class PolicyRetriever:
         self.encoder = SentenceTransformer("all-MiniLM-L6-v2", use_auth_token=HGToken)
         # Sample medical policies - in production, this would come from a database
         self.policies = {
-            "privacy": """
-                Patient Privacy Policy:
-                - All patient information is confidential and protected under HIPAA
-                - Access to medical records requires patient consent
-                - Data sharing with third parties strictly regulated
-            """,
-            "appointments": """
-                Appointment Policy:
-                - 24-hour notice required for cancellations
-                - Telehealth options available for eligible consultations
-                - Emergency cases prioritized based on severity
-            """,
-            "insurance": """
-                Insurance Policy:
-                - We accept major insurance providers
-                - Pre-authorization required for specific procedures
-                - Co-pay due at time of service
-            """,
-            "medication": """
-                Medication Policy:
-                - Prescription refills require 48-hour notice
-                - Controlled substances have strict monitoring protocols
-                - Generic alternatives offered when available
-            """,
+"privacy": """
+Patient Privacy Policy:
+- All patient information is confidential and protected under HIPAA
+- Access to medical records requires patient consent
+- Data sharing with third parties strictly regulated
+""",
+"appointments": """
+Appointment Policy:
+- 24-hour notice required for cancellations
+- Telehealth options available for eligible consultations
+- Emergency cases prioritized based on severity
+""",
+"insurance": """
+Insurance Policy:
+- We accept major insurance providers
+- Pre-authorization required for specific procedures
+- Co-pay due at time of service
+""",
+"medication": """
+Medication Policy:
+- Prescription refills require 48-hour notice
+- Controlled substances have strict monitoring protocols
+- Generic alternatives offered when available
+""",
         }
         # Pre-compute embeddings for policies
         self.policy_embeddings = {

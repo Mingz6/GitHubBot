@@ -42,53 +42,52 @@ def prompt_llm(prompt, client=None):
 class EmailResponseRetriever:
     def __init__(self):
         self.encoder = SentenceTransformer("all-MiniLM-L6-v2", use_auth_token=HGToken)
-        # Sample email response examples with more casual tone
+        # Sample email response examples with professional yet approachable tone for CRNA
         self.examples = {
-"medical_records": """
+"permit_verification": """
 ORIGINAL EMAIL:
-Hey there, I was hoping to get my medical records. What do I need to do?
+Hello, I need to verify if a nurse in our facility has a valid permit. How can I do this?
 
 MY RESPONSE:
-Hi! Happy to help you get those records. We just need a few quick things:
-1. Your signed OK (we'll send you the form)
-2. A quick form to fill out
-3. Your ID
-Just upload everything to our secure portal and we'll take care of the rest! Let me know if you need help.
+Hi there! You can easily verify a nurse's permit through our "Verify a Permit" feature on the CRNA website (nurses.ab.ca). It's quick and provides up-to-date information on registration status. Is there anything specific about the verification process you need help with?
 """,
-"insurance_verification": """
+"registration_requirements": """
 ORIGINAL EMAIL:
-Quick question - do you guys take Aetna insurance?
+I'm interested in getting registered in Alberta. What are the requirements?
 
 MY RESPONSE:
-Hey there! Yes, we work with Aetna and most other major insurance companies.
-Could you shoot me your:
-- Member ID
-- Group number
-I'll double-check everything and get back to you super quick (usually within a day).
-Sound good?
+Hello! To register as a nurse in Alberta, you'll need to meet several core requirements including:
+- Completion of registration exam
+- Verified post-secondary education
+- English language proficiency
+- Currency of practice
+- Continuing competence documentation
+- Liability insurance
+
+Would you like me to send you the detailed application pathway information?
 """,
-"appointment_scheduling": """
+"internationally_educated": """
 ORIGINAL EMAIL:
-Something came up and I need to move my appointment. Help!
+I completed my nursing education in the Philippines. How do I apply for a permit in Alberta?
 
 MY RESPONSE:
-Hey! No worries at all - life happens! 😊
-I've got a couple of spots open:
-- Tuesday @ 2pm
-- Wednesday morning at 10am
-Just let me know what works better for you and I'll get it switched right away!
+Welcome! As an internationally educated nurse, you can start by creating an account in our online registrant portal, College Connect. Our pathway assessment tool will guide you through the specific requirements for your situation.
+
+We've recently streamlined the process with updates like accepting multiple credential review services and recognizing NCLEX-RN exam results as evidence of education.
+
+Would you like the direct link to get started?
 """,
-"medication_refill": """
+"continuing_competence": """
 ORIGINAL EMAIL:
-Running low on my meds - need a refill asap!
+I need information about maintaining my nursing competence. What does CRNA require?
 
 MY RESPONSE:
-Hey! Thanks for the heads up about your meds. I'm on it!
-Here's what's happening next:
-1. We'll review your refill request today
-2. Give your pharmacy a call
-3. They should have it ready in 1-2 days
-Need it sooner? Just let me know!
+Hi there! The Continuing Competence Program outlines how to maintain and enhance your professional skills throughout your career. The program includes:
+- Regular self-assessment
+- Learning plan development
+- Implementation of learning activities
+
+You can access all resources through your College Connect account. Can I help you with a specific aspect of the program?
 """,
         }
         # Pre-compute embeddings for examples
@@ -118,31 +117,35 @@ Need it sooner? Just let me know!
 class PolicyRetriever:
     def __init__(self):
         self.encoder = SentenceTransformer("all-MiniLM-L6-v2", use_auth_token=HGToken)
-        # Sample medical policies - in production, this would come from a database
+        # CRNA policies based on Questions.txt
         self.policies = {
-"privacy": """
-Patient Privacy Policy:
-- All patient information is confidential and protected under HIPAA
-- Access to medical records requires patient consent
-- Data sharing with third parties strictly regulated
+"registration": """
+Registration Policy:
+- Core registration requirements include demographic information, registration exam, and post-secondary education
+- English language proficiency must be demonstrated through accepted tests or approved methods
+- Currency of practice and continuing competence documentation required
+- Good character, fitness to practice, jurisprudence completion, and liability insurance needed
 """,
-"appointments": """
-Appointment Policy:
-- 24-hour notice required for cancellations
-- Telehealth options available for eligible consultations
-- Emergency cases prioritized based on severity
+"standards": """
+Professional Standards Policy:
+- The CRNA standards outline minimum expectations for registered nurses and nurse practitioners
+- Documentation Standards provide requirements for clear, accurate, and comprehensive client care records
+- Medication Management Standards define safe medication practices requirements
+- Advertising Standards ensure transparency and accuracy when promoting nursing services
 """,
-"insurance": """
-Insurance Policy:
-- We accept major insurance providers
-- Pre-authorization required for specific procedures
-- Co-pay due at time of service
+"complaint_process": """
+Complaint Process Policy:
+- Complaints can be submitted through the "Submit a Complaint" feature on the CRNA website
+- Process includes submission, investigation, and resolution
+- Support services are available for victims of sexual abuse and misconduct
+- The CRNA is committed to transparency throughout the complaint process
 """,
-"medication": """
-Medication Policy:
-- Prescription refills require 48-hour notice
-- Controlled substances have strict monitoring protocols
-- Generic alternatives offered when available
+"education_programs": """
+Education Program Policy:
+- CRNA approves nursing education programs in Alberta for RN and NP practice
+- The Nursing Education Program Approval Framework outlines expectations for post-secondary institutions
+- Entry-Level Competencies define required knowledge, skills, and judgment for new practitioners
+- CRNA provides resources and guidelines to nursing educators to ensure regulatory alignment
 """,
         }
         # Pre-compute embeddings for policies
@@ -177,7 +180,7 @@ class EmailAgent:
         self.policy_retriever = PolicyRetriever()
 
         self.prompts = {
-            "analyzer": """SYSTEM: You are an expert email analyzer for a medical company.
+            "analyzer": """SYSTEM: You are an expert email analyzer for the College of Registered Nurses of Alberta (CRNA).
             Your role is to break down emails into key components and provide clear, actionable insights.
 
             INSTRUCTIONS:
@@ -186,7 +189,7 @@ class EmailAgent:
             • List all required actions in bullet points
             • Analyze tone of the message (formal, informal, urgent, etc.)
             • Consider similar past responses
-            • Highlight any compliance concerns
+            • Highlight any regulatory compliance concerns
             • Limit response to 50 words maximum
             • Show response only without additional commentary
 
@@ -197,15 +200,15 @@ class EmailAgent:
             {policies}
 
             Email: {content}""",
-            "drafter": """SYSTEM: You are a professional email response specialist for a medical company.
-            Draft responses that align with our past successful responses while maintaining HIPAA compliance.
+            "drafter": """SYSTEM: You are a professional email response specialist for the College of Registered Nurses of Alberta (CRNA).
+            Draft responses that align with our past successful responses while maintaining regulatory compliance.
 
             INSTRUCTIONS:
             • Address all key points from the original email
-            • Use a friendly, conversational tone like in our examples
-            • Ensure HIPAA compliance in all content
+            • Use a professional, helpful tone like in our examples
+            • Ensure compliance with nursing regulatory standards
             • Include clear next steps and action items
-            • Maintain professional yet approachable tone
+            • Reference specific CRNA resources or processes when appropriate
             • Add necessary disclaimers where applicable
             • Limit response to 50 words maximum
             • Show response only without additional commentary
@@ -217,13 +220,13 @@ class EmailAgent:
             {policies}
 
             Based on this analysis: {content}""",
-            "reviewer": """SYSTEM: You are a senior email quality assurance specialist for a medical company.
-            Ensure responses meet healthcare communication standards and match our friendly tone.
+            "reviewer": """SYSTEM: You are a senior email quality assurance specialist for the College of Registered Nurses of Alberta (CRNA).
+            Ensure responses meet professional regulatory communication standards.
 
             INSTRUCTIONS:
             • Verify alignment with example responses
-            • Check for HIPAA violations
-            • Assess professional yet friendly tone
+            • Check for regulatory compliance
+            • Assess professional and helpful tone
             • Review completeness of response
             • Evaluate appropriate handling of sensitive information
             • Confirm all action items are clearly stated
@@ -238,13 +241,13 @@ class EmailAgent:
 
             Evaluate this draft response: {content}""",
             "sentiment": """SYSTEM: You are an expert in analyzing email sentiment and emotional context in
-            healthcare communications.
+            nursing regulatory communications.
 
             INSTRUCTIONS:
             • Analyze overall sentiment (positive, negative, neutral)
             • Identify emotional undertones
             • Detect urgency or stress indicators
-            • Assess patient/sender satisfaction level
+            • Assess sender satisfaction or concern level
             • Flag any concerning language
             • Recommend tone adjustments if needed
             • Limit response to 50 words maximum
@@ -256,7 +259,7 @@ class EmailAgent:
 
             Email content: {content}
             Selected examples: {examples}""",
-            "policy_justifier": """SYSTEM: You are a policy expert. In 2 lines, explain why the following policies are relevant
+            "policy_justifier": """SYSTEM: You are a policy expert. In 2 lines, explain why the following CRNA policies are relevant
             to this email content. Be specific and concise.
 
             Email content: {content}
@@ -326,24 +329,43 @@ class EmailProcessingSystem:
         }
 
 
-# Sample emails for testing
+# Sample emails for testing - updated for CRNA context
 sample_emails = [
-    """Hi, I need to get my medical records from last month's visit.
-    Can you help me with the process? Thanks!""",
-    """Hello, I'm trying to schedule an appointment for next week.
-    I have Aetna insurance and wanted to confirm you accept it before booking.""",
-    """My appointment is tomorrow at 2pm but something urgent came up at work.
-    Is there any way I could reschedule?""",
-    """Running low on my blood pressure medication.
-    Need to get it refilled before next week. What's the process?""",
-    """Hi there, just moved to the area and looking for a new primary care doctor.
-    Are you accepting new patients with United Healthcare?""",
+    """Hello, I need to verify if a nurse at our facility has a valid permit. 
+    What's the best way to check this information? Thank you.""",
+    
+    """Hi, I'm an internationally educated nurse who recently moved to Alberta.
+    I'd like to know how to apply for a nursing permit and what documentation I'll need.""",
+    
+    """I have questions about the Continuing Competence Program requirements.
+    Where can I find resources to help me complete the necessary documentation?""",
+    
+    """I'm considering becoming a Nurse Practitioner in Alberta.
+    Can you tell me more about the Nurse Practitioner Primary Care Program (NPPCP)?""",
+    
+    """I need to submit a complaint regarding unprofessional conduct by a nurse.
+    What is the proper process to follow, and what information should I include?""",
+    
+    """I'm a nursing educator at a post-secondary institution in Alberta. 
+    We're developing a new nursing program and would like to know the CRNA approval process.""",
+    
+    """Hello, I'm a registered nurse and need to renew my permit soon. 
+    Could you please explain the renewal process and what I need to prepare?""",
+    
+    """I'm looking for resources on medication management standards in Alberta. 
+    Where can I find the CRNA's guidelines on this topic?""",
+    
+    """Good morning, I'm interested in learning more about the CRNA's stance on diversity, equity, and inclusion. 
+    Do you have any resources or initiatives related to this area?""",
+    
+    """I'm having technical issues accessing my College Connect account. 
+    Could you please advise on how to resolve login problems or reset my password?""",
 ]
 
 
 # Flask application
 app = Flask(__name__)
-app.secret_key = 'medical_email_system_secret_key'  # For session management
+app.secret_key = 'crna_email_system_secret_key'  # For session management
 
 
 @app.route('/')

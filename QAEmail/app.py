@@ -25,7 +25,7 @@ API_KEY = config.get('together_ai_token')
 HGToken = config.get('hf_token')
 
 # Function to interact with LLM using Together API
-def prompt_llm(prompt, client=None):
+def prompt_llm(prompt, client=None, max_tokens=300):  # Increased default max_tokens from 150 to 300
     if client is None:
         return "Error: Together client not initialized"
     
@@ -33,11 +33,125 @@ def prompt_llm(prompt, client=None):
         response = client.chat.completions.create(
             model="meta-llama/Meta-Llama-3-8B-Instruct-Lite",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=150
+            max_tokens=max_tokens
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Error calling Together API: {str(e)}"
+
+# New class to handle direct knowledge lookup from Questions.txt
+class KnowledgeRetriever:
+    def __init__(self):
+        self.questions_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Questions.txt')
+        self.encoder = SentenceTransformer("all-MiniLM-L6-v2", use_auth_token=HGToken)
+        self.qa_pairs = self._load_qa_pairs()
+        # Precompute embeddings for questions to enable semantic search
+        self.question_embeddings = {
+            q: self.encoder.encode(q) for q, a in self.qa_pairs.items()
+        }
+        
+    def _load_qa_pairs(self):
+        """Load question-answer pairs from Questions.txt"""
+        qa_pairs = {}
+        try:
+            if os.path.exists(self.questions_file):
+                with open(self.questions_file, 'r') as f:
+                    lines = f.readlines()
+                    
+                i = 0
+                while i < len(lines):
+                    # Skip empty lines
+                    if not lines[i].strip():
+                        i += 1
+                        continue
+                    
+                    # Get question
+                    question = lines[i].strip()
+                    i += 1
+                    
+                    # Skip empty lines
+                    while i < len(lines) and not lines[i].strip():
+                        i += 1
+                    
+                    # Get answer if available
+                    answer = ""
+                    if i < len(lines):
+                        answer = lines[i].strip()
+                        i += 1
+                    
+                    if question and not question.startswith("http"):  # Filter out website URLs
+                        qa_pairs[question] = answer
+            
+            print(f"Loaded {len(qa_pairs)} QA pairs from knowledge base")
+            return qa_pairs
+        except Exception as e:
+            print(f"Error loading Questions.txt: {str(e)}")
+            return {}
+
+    def get_direct_answer(self, query):
+        """Check if the query exactly matches a question in the knowledge base"""
+        # Direct lookup (case insensitive)
+        query_lower = query.lower().strip()
+        for question, answer in self.qa_pairs.items():
+            if question.lower().strip() == query_lower:
+                return answer
+        return None
+
+    def get_relevant_knowledge(self, query, top_k=3):
+        """Find the most relevant knowledge for the query using semantic search"""
+        if not self.qa_pairs:
+            return "No knowledge base found."
+
+        query_embedding = self.encoder.encode(query)
+        similarities = {
+            q: cosine_similarity([query_embedding], [emb])[0][0]
+            for q, emb in self.question_embeddings.items()
+        }
+        sorted_questions = sorted(similarities.items(), key=lambda x: x[1], reverse=True)
+
+        relevant_knowledge = []
+        for question, score in sorted_questions[:top_k]:
+            if score > 0.65:  # Higher threshold for confidence
+                relevant_knowledge.append({
+                    "question": question,
+                    "answer": self.qa_pairs[question],
+                    "score": float(score)
+                })
+
+        # If we have high confidence matches, format them nicely
+        if relevant_knowledge:
+            result = ""
+            for item in relevant_knowledge:
+                result += f"Q: {item['question']}\nA: {item['answer']}\n\n"
+            return result
+        
+        # Check for keyword matches if no semantic matches found
+        keywords = query.lower().split()
+        # Filter out common words
+        stop_words = {"a", "an", "the", "is", "are", "was", "were", "how", "what", "why", "where", "when", "who", "can", "could", "to", "for", "in", "on", "with", "by", "about"}
+        keywords = [k for k in keywords if k not in stop_words and len(k) > 2]
+        
+        keyword_matches = []
+        for question, answer in self.qa_pairs.items():
+            question_lower = question.lower()
+            if any(keyword in question_lower for keyword in keywords):
+                # Calculate simple match score based on number of matching keywords
+                match_count = sum(1 for kw in keywords if kw in question_lower)
+                keyword_matches.append({
+                    "question": question,
+                    "answer": answer,
+                    "matches": match_count
+                })
+        
+        if keyword_matches:
+            # Sort by number of keyword matches
+            keyword_matches.sort(key=lambda x: x["matches"], reverse=True)
+            result = ""
+            for item in keyword_matches[:top_k]:
+                result += f"Q: {item['question']}\nA: {item['answer']}\n\n"
+            return result
+            
+        return "No relevant knowledge found."
 
 class EmailResponseRetriever:
     def __init__(self):
@@ -283,8 +397,17 @@ class EmailProcessingSystem:
         self.reviewer = EmailAgent("reviewer", client)
         self.example_justifier = EmailAgent("example_justifier", client)
         self.policy_justifier = EmailAgent("policy_justifier", client)
+        # Initialize the knowledge retriever
+        self.knowledge_retriever = KnowledgeRetriever()
 
     def process_email(self, email_content):
+        # First check if we can directly answer from the knowledge base
+        direct_answer = self.knowledge_retriever.get_direct_answer(email_content)
+        relevant_knowledge = self.knowledge_retriever.get_relevant_knowledge(email_content) if not direct_answer else ""
+        
+        # If we have a direct answer or relevant knowledge, use it
+        has_knowledge_answer = direct_answer or (relevant_knowledge and relevant_knowledge != "No relevant knowledge found.")
+        
         # Step 1: Analyze email content
         print("\nAnalyzing email content...")
         analysis = self.analyzer.process(email_content)
@@ -295,9 +418,28 @@ class EmailProcessingSystem:
             self.analyzer.client
         )
 
-        # Step 3: Draft response
+        # Step 3: Draft response - use knowledge base if available
         print("\nDrafting response based on analysis...")
-        draft = self.drafter.process(analysis)
+        if has_knowledge_answer:
+            # Create a prompt for drafting a response using the knowledge base
+            knowledge_content = direct_answer if direct_answer else relevant_knowledge
+            
+            # Create a more concise prompt for drafting based on knowledge
+            draft_prompt = f"""SYSTEM: You are the CRNA email assistant. Draft a complete, professional response to the following email using the knowledge provided. Include greeting and closing.
+
+            ORIGINAL EMAIL:
+            {email_content}
+
+            KNOWLEDGE BASE INFORMATION:
+            {knowledge_content}
+            
+            Make sure the response is complete with a clear beginning and end."""
+            
+            # Generate the draft using the LLM with increased token limit
+            draft = prompt_llm(draft_prompt, self.analyzer.client, max_tokens=600)
+        else:
+            # If no knowledge is available, return the standard message
+            draft = "CRNA Email Assistant is unable to locate the relevant information. Please update the knowledge base to ensure data retrieval."
 
         # Get relevant policies and example responses for display
         relevant_policies = self.analyzer.policy_retriever.get_relevant_policy(email_content)
@@ -325,7 +467,8 @@ class EmailProcessingSystem:
             "examples": relevant_examples,
             "policy_justification": policy_justification,
             "example_justification": example_justification,
-            "sentiment": sentiment
+            "sentiment": sentiment,
+            "knowledge_source": "Direct match" if direct_answer else ("Semantic search" if has_knowledge_answer else "Not found in knowledge base")
         }
 
 

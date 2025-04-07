@@ -3,6 +3,7 @@
 - [x] - Add RAG to the work --> https://huggingface.co/spaces/AFischer1985/AI-RAG-Interface-to-Hub/tree/main
 
 - [ ] - ensure citation is available. 
+- [ ] - add confidence score to the answer
 
 - [ ] - email Q&A based on database/website/documents -> https://huggingface.co/spaces/AimlAPI/EmailAgent
 - [ ] - Chat features (Spical chat bot and store chat history)
@@ -27,6 +28,14 @@
         - Developers
         - Help Desks
       - Landing Page (Demo)
+PPT note:
+For who
+Use case
+Demo
+QRcode generator
+
+
+- [ ] - Test with https://huggingface.co/datasets?task_categories=task_categories:question-answering&sort=trending
 
 - [ ] - Answer faster and more accurate (Increase chrunck size or using multiple chrunks)
 

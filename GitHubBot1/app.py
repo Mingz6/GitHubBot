@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, url_for, send_from_directory
 import requests
 from bs4 import BeautifulSoup
-from agents import SummarizerAgent, InsightAgent, RecommenderAgent, QuestionGeneratorAgent, CLISetupAgent
+from agents import SummarizerAgent, InsightAgent, RecommenderAgent, QuestionGeneratorAgent, CLISetupAgent, ChatbotAgent
 from github_utils import get_repo_content, get_repo_structure, get_repo_metadata, is_github_url
 import os
 
@@ -11,6 +11,7 @@ insight_agent = InsightAgent()
 recommender_agent = RecommenderAgent()
 question_generator = QuestionGeneratorAgent()
 cli_setup_agent = CLISetupAgent()
+chatbot_agent = ChatbotAgent()  # Initialize the new ChatbotAgent
 
 @app.route('/templates/<path:filename>')
 def serve_template_file(filename):
@@ -185,11 +186,58 @@ def workflow():
             "insights": insights,
             "recommendations": recommendations,
             "next_area": next_area,
-            "questions": questions
+            "questions": questions,
+            "repo_content": repo_content,  # Add repository content for the chatbot
+            "repo_metadata": repo_metadata  # Add repository metadata for the chatbot
         })
     
     except Exception as e:
         return jsonify({"error": f"Error in workflow: {str(e)}"}), 500
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    """Handle chatbot questions about a repository."""
+    data = request.json
+    question = data.get("question", "")
+    repo_url = data.get("repo_url", "")
+    repo_content = data.get("repo_content", {})
+    repo_metadata = data.get("repo_metadata", {})
+    summaries = data.get("summaries", {})
+    insights = data.get("insights", "")
+    
+    if not question:
+        return jsonify({"error": "No question provided"}), 400
+        
+    if not repo_content and repo_url:
+        # If content isn't provided but URL is, fetch the repository content
+        if is_github_url(repo_url):
+            repo_content = get_repo_content(repo_url)
+            repo_metadata = get_repo_metadata(repo_url)
+            # Ensure repo_metadata has the URL
+            if "url" not in repo_metadata:
+                repo_metadata["url"] = repo_url
+        else:
+            return jsonify({"error": "Valid GitHub repository URL required"}), 400
+    
+    if not repo_content:
+        return jsonify({"error": "No repository content provided"}), 400
+    
+    try:
+        # Use the chatbot agent to answer the question
+        answer = chatbot_agent.answer_question(
+            question=question,
+            repo_content=repo_content,
+            repo_metadata=repo_metadata,
+            summaries=summaries,
+            insights=insights
+        )
+        
+        return jsonify({
+            "answer": answer,
+            "question": question
+        })
+    except Exception as e:
+        return jsonify({"error": f"Error answering question: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001, host="0.0.0.0")

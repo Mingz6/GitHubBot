@@ -97,6 +97,33 @@
                     <div id="questions"></div>
                 </div>
             </div>
+            
+            <!-- New chatbot interface card -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Chat with Repo Cat</h5>
+                    <img src="https://cdn-icons-png.flaticon.com/512/1864/1864654.png" class="cat-corner cat-top-right">
+                    <p class="card-text">Ask any question about this repository and get immediate answers!</p>
+                    
+                    <div id="chat-container">
+                        <div id="chat-messages" class="chat-messages mb-3"></div>
+                        
+                        <div class="chat-input-container d-flex">
+                            <input type="text" id="chat-input" class="form-control me-2" 
+                                placeholder="Ask about setup, functionality, or code structure...">
+                            <button id="chat-submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <div id="chat-loading" class="chat-loading mt-2 d-none">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span class="ms-2">Repo Cat is thinking...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <footer class="text-center mt-5">
@@ -193,6 +220,11 @@
                         emojiSpan.textContent = randomEmoji;
                         cardBody.appendChild(emojiSpan);
                     });
+                    
+                    // Store repository data for chat functionality
+                    if (window.updateRepoData) {
+                        window.updateRepoData(data);
+                    }
                 } else {
                     alert('Error: ' + (data.error || 'Failed to analyze repository'));
                 }
@@ -235,6 +267,160 @@
                     cat.style.transform = 'scaleX(1)';
                 }
             });
+            
+            // Chat functionality
+            const chatInput = document.getElementById('chat-input');
+            const chatSubmit = document.getElementById('chat-submit');
+            const chatMessages = document.getElementById('chat-messages');
+            const chatLoading = document.getElementById('chat-loading');
+            
+            // Initialize repository data storage
+            let repoData = {
+                url: '',
+                content: {},
+                metadata: {},
+                summaries: {},
+                insights: ''
+            };
+            
+            // Store the data from workflow response for use in chat
+            document.getElementById('repoForm').addEventListener('submit', function() {
+                // This will be populated when the workflow response comes back
+                setTimeout(() => {
+                    const repoUrl = document.getElementById('repo_url').value;
+                    repoData.url = repoUrl;
+                }, 100);
+            });
+            
+            // Send a message when the send button is clicked
+            chatSubmit.addEventListener('click', sendMessage);
+            
+            // Also send a message when Enter is pressed in the input field
+            chatInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            function formatTimestamp() {
+                const now = new Date();
+                return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+            
+            function addMessage(text, isUser = false) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('chat-message');
+                messageElement.classList.add(isUser ? 'user-message' : 'bot-message');
+                
+                // Format message text to handle code blocks and line breaks
+                let formattedText = text;
+                
+                // Convert markdown code blocks to HTML
+                formattedText = formattedText.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
+                
+                // Convert inline code to HTML
+                formattedText = formattedText.replace(/`([^`]+)`/g, '<code>$1</code>');
+                
+                // Convert line breaks to <br>
+                formattedText = formattedText.replace(/\n/g, '<br>');
+                
+                messageElement.innerHTML = `
+                    ${formattedText}
+                    <span class="message-time">${formatTimestamp()}</span>
+                `;
+                
+                chatMessages.appendChild(messageElement);
+                
+                // Scroll to the bottom of the chat
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            async function sendMessage() {
+                const message = chatInput.value.trim();
+                if (!message) return;
+                
+                // Add user message to chat
+                addMessage(message, true);
+                
+                // Clear input field
+                chatInput.value = '';
+                
+                // Show loading indicator
+                chatLoading.classList.remove('d-none');
+                
+                // Collect data needed for the chat request
+                const repoUrl = repoData.url || document.getElementById('repo_url').value;
+                
+                // Collect summaries from displayed content
+                const summariesDiv = document.getElementById('summaries');
+                const summaries = {};
+                if (summariesDiv) {
+                    const summaryElements = summariesDiv.querySelectorAll('h6');
+                    summaryElements.forEach(el => {
+                        const filename = el.innerText;
+                        const summary = el.nextElementSibling.innerText;
+                        summaries[filename] = summary;
+                    });
+                }
+                
+                // Get insights
+                const insightsEl = document.getElementById('insights');
+                let insights = '';
+                if (insightsEl) {
+                    insights = insightsEl.innerText;
+                }
+                
+                try {
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            question: message,
+                            repo_url: repoUrl,
+                            repo_content: repoData.content,
+                            repo_metadata: repoData.metadata,
+                            summaries: summaries,
+                            insights: insights
+                        }),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        // Add bot response to chat
+                        addMessage(data.answer, false);
+                    } else {
+                        // Add error message
+                        addMessage('Sorry, I encountered an error: ' + (data.error || 'Unknown error'), false);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    addMessage('Sorry, I encountered a technical problem. Please try again.', false);
+                } finally {
+                    // Hide loading indicator
+                    chatLoading.classList.add('d-none');
+                }
+            }
+            
+            // Update stored repo data when workflow completes
+            window.updateRepoData = function(data) {
+                repoData = {
+                    url: document.getElementById('repo_url').value,
+                    content: data.repo_content || {},
+                    metadata: data.repo_metadata || {},
+                    summaries: data.summaries || {},
+                    insights: data.insights || ''
+                };
+                
+                // Add a welcome message from Repo Cat after analysis
+                if (chatMessages && chatMessages.childElementCount === 0) {
+                    setTimeout(() => {
+                        addMessage('😺 Meow! I\'ve analyzed this repository and I\'m ready to answer your questions about it. Ask me anything about the code structure, setup, or functionality!', false);
+                    }, 1000);
+                }
+            };
         });
     </script>
 </body>

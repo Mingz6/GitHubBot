@@ -14,7 +14,7 @@ def load_config():
 # Get API key and model from config
 config = load_config()
 your_api_key = config["together_ai_token"]
-model = config.get("model", "meta-llama/Meta-Llama-3-8B-Instruct-Lite")  # Use default if not in config
+model = config.get("model", "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8")  # Use default if not in config
 client = Together(api_key=your_api_key)
 
 
@@ -256,3 +256,141 @@ class CLISetupAgent:
         except Exception as e:
             print(f"Error generating CLI setup: {str(e)}")
             return default_steps
+
+
+class ChatbotAgent:
+    """Agent for answering questions about GitHub repositories."""
+    
+    def __init__(self):
+        self.client = Together(api_key=your_api_key)
+    
+    def answer_question(self, question, repo_content, repo_metadata, summaries=None, insights=None):
+        """
+        Answer a question about a GitHub repository based on its content and analysis.
+        
+        Args:
+            question: The user's question about the repository
+            repo_content: Dictionary of repository files and their content
+            repo_metadata: Repository metadata like name, description, etc.
+            summaries: Optional dictionary of file summaries
+            insights: Optional insights about the repository
+            
+        Returns:
+            A string containing the answer to the question
+        """
+        # Extract key repository information
+        repo_name = repo_metadata.get("name", "Unknown repository")
+        repo_description = repo_metadata.get("description", "No description available")
+        repo_language = repo_metadata.get("language", "Unknown")
+        
+        # Create a context from the repository information
+        context = f"Repository: {repo_name}\nDescription: {repo_description}\nLanguage: {repo_language}\n\n"
+        
+        # Add insights if available
+        if insights:
+            context += f"Key insights:\n{insights}\n\n"
+            
+        # Add summaries if available
+        if summaries:
+            context += "File summaries:\n"
+            for filename, summary in summaries.items():
+                context += f"- {filename}: {summary}\n"
+            context += "\n"
+            
+        # Select relevant files for the question to avoid token limit issues
+        relevant_files = self._select_relevant_files(question, repo_content, max_files=5)
+        
+        # Add content of relevant files
+        if relevant_files:
+            context += "Relevant files:\n"
+            for filename, content in relevant_files.items():
+                # Truncate long files
+                if len(content) > 1000:
+                    context += f"--- {filename} (truncated) ---\n{content[:1000]}...\n\n"
+                else:
+                    context += f"--- {filename} ---\n{content}\n\n"
+        
+        # Create the prompt for the LLM
+        prompt = f"""SYSTEM: You are a GitHub repository expert assistant. You provide accurate, helpful answers
+        about code repositories based on their content, structure, and analysis. Draw upon the
+        provided context to answer the question. If you don't know the answer, say so honestly.
+        
+        CONTEXT INFORMATION:
+        {context}
+        
+        USER QUESTION:
+        {question}
+        
+        Provide a clear, concise answer to the question based only on the information provided above.
+        Include code snippets or commands when relevant. Be specific and informative.
+        """
+        
+        return prompt_llm(prompt)
+        
+    def _select_relevant_files(self, question, repo_content, max_files=5):
+        """Select files from the repository that are most relevant to the question."""
+        
+        # If there are only a few files, return all of them
+        if len(repo_content) <= max_files:
+            return repo_content
+            
+        # For more files, select the most relevant ones based on the question
+        relevant_files = {}
+        
+        # Create a prompt to identify relevant file types for the question
+        file_selection_prompt = f"""SYSTEM: You are a code repository expert. Given a question about a repository,
+        identify what types of files would be most relevant to answer it.
+        
+        QUESTION: {question}
+        
+        Based on this question, list ONLY 3-5 file patterns or extensions that would be most relevant
+        for answering it. For example: 'README.md', '.py', 'package.json', 'Dockerfile', etc.
+        Just list the patterns, one per line, without any explanation or additional text.
+        """
+        
+        # Get relevant file patterns
+        try:
+            file_patterns_response = prompt_llm(file_selection_prompt)
+            file_patterns = [pattern.strip().lower() for pattern in file_patterns_response.split('\n') if pattern.strip()]
+            
+            # Filter files based on patterns
+            for filename, content in repo_content.items():
+                filename_lower = filename.lower()
+                
+                # Check if file matches any of the patterns
+                if any(pattern in filename_lower for pattern in file_patterns):
+                    relevant_files[filename] = content
+                    
+                # Stop when we reach the maximum number of files
+                if len(relevant_files) >= max_files:
+                    break
+            
+            # If we didn't find enough files with patterns, add important files
+            if len(relevant_files) < max_files:
+                important_files = ['readme.md', 'setup.py', 'requirements.txt', 'package.json', 'dockerfile']
+                
+                for filename, content in repo_content.items():
+                    if filename.lower() in important_files and filename not in relevant_files:
+                        relevant_files[filename] = content
+                        
+                    # Stop when we reach the maximum number of files
+                    if len(relevant_files) >= max_files:
+                        break
+                        
+            # If we still don't have enough files, add some random ones
+            remaining_slots = max_files - len(relevant_files)
+            if remaining_slots > 0:
+                for filename, content in repo_content.items():
+                    if filename not in relevant_files:
+                        relevant_files[filename] = content
+                        remaining_slots -= 1
+                        
+                    if remaining_slots <= 0:
+                        break
+                        
+        except Exception as e:
+            print(f"Error selecting relevant files: {str(e)}")
+            # Fallback: just take the first max_files
+            relevant_files = dict(list(repo_content.items())[:max_files])
+            
+        return relevant_files

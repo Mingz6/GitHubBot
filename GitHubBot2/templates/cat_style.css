@@ -1,0 +1,248 @@
+:root {
+    --cat-primary: #FF9D87;
+    --cat-secondary: #FFCBA4;
+    --cat-accent: #8C5E58;
+    --cat-dark: #594545;
+    --cat-light: #FFF5E4;
+}
+
+body {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    background-color: var(--cat-light);
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    background-image: url('https://www.transparenttextures.com/patterns/paws.png');
+}
+
+.loading {
+    display: none;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.card {
+    margin-bottom: 20px;
+    border-radius: 15px;
+    border: 2px solid var(--cat-accent);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: white;
+}
+
+.card-body {
+    position: relative;
+}
+
+.card-title {
+    color: var(--cat-dark);
+    font-weight: bold;
+    display: inline-block;
+}
+
+.card-title::before {
+    content: "🐱 ";
+}
+
+.btn-primary {
+    background-color: var(--cat-primary);
+    border-color: var(--cat-accent);
+    color: var(--cat-dark);
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: var(--cat-accent);
+    border-color: var(--cat-dark);
+    transform: scale(1.05);
+}
+
+h1 {
+    color: var(--cat-accent);
+    text-align: center;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+h1::before, h1::after {
+    content: " 🐾 ";
+}
+
+.form-control, .form-select {
+    border: 2px solid var(--cat-secondary);
+    border-radius: 10px;
+    background-color: var(--cat-light);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--cat-primary);
+    box-shadow: 0 0 0 0.25rem rgba(255, 157, 135, 0.25);
+}
+
+.form-label {
+    color: var(--cat-dark);
+    font-weight: bold;
+}
+
+.cat-corner {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    opacity: 0.7;
+}
+
+.cat-top-right {
+    top: -25px;
+    right: -15px;
+    transform: rotate(45deg);
+}
+
+.spinner-border {
+    color: var(--cat-primary) !important;
+}
+
+.paw-list {
+    list-style-type: none;
+    padding-left: 10px;
+}
+
+.paw-list li::before {
+    content: "🐾";
+    margin-right: 10px;
+}
+
+#loading p {
+    color: var(--cat-accent);
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+#loading img {
+    width: 100px;
+    height: auto;
+}
+
+.cat-cursor {
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='48' viewport='0 0 100 100' style='fill:black;font-size:24px;'><text y='50%'>🐱</text></svg>") 16 0, auto;
+}
+
+/* Special styles for results section */
+#results pre {
+    background-color: var(--cat-light); 
+    padding: 15px; 
+    border-radius: 10px; 
+    border: 1px dashed var(--cat-primary);
+}
+
+/* CLI setup instructions styling */
+.cli-setup pre.cli-instructions {
+    background-color: var(--cat-light);
+    color: var(--cat-dark);
+    padding: 15px;
+    border-radius: 10px;
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
+    border-left: 5px solid var(--cat-primary);
+    overflow-x: auto;
+}
+
+.cli-setup pre.cli-instructions::before {
+    content: "🐈 $ ";
+    color: var(--cat-primary);
+}
+
+/* Footer styles */
+footer {
+    color: var(--cat-accent);
+    margin-top: 2rem;
+}
+
+footer .fa-heart {
+    color: var(--cat-primary);
+}
+
+footer .fa-cat, footer .fa-paw {
+    font-size: 20px;
+    margin-right: 0.5rem;
+}
+
+/* Chat interface styling */
+.chat-messages {
+    max-height: 50vh; /* 50% of viewport height by default */
+    overflow-y: auto;
+    padding: 10px;
+    border: 1px solid var(--cat-secondary);
+    border-radius: 10px;
+    background-color: var(--cat-light);
+}
+
+#chat-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 250px;
+    max-height: 70vh; /* Maximum height is 70% of viewport height */
+    transition: all 0.3s ease;
+}
+
+.chat-message {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 10px;
+    max-width: 80%;
+}
+
+.user-message {
+    background-color: var(--cat-primary);
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 2px;
+}
+
+.bot-message {
+    background-color: var(--cat-secondary);
+    color: var(--cat-dark);
+    margin-right: auto;
+    border-bottom-left-radius: 2px;
+}
+
+.chat-loading {
+    color: var(--cat-accent);
+    font-style: italic;
+}
+
+.chat-input-container {
+    margin-top: 10px;
+}
+
+.message-time {
+    font-size: 0.7rem;
+    color: #666;
+    display: block;
+    margin-top: 5px;
+}
+
+.chat-message::before {
+    content: "";
+    display: block;
+    font-size: 0.8rem;
+    margin-bottom: 5px;
+}
+
+.user-message::before {
+    content: "You";
+    color: white;
+}
+
+.bot-message::before {
+    content: "Repo Cat 🐱";
+    color: var(--cat-dark);
+}
+
+/* Empty chat messages placeholder */
+.chat-messages:empty::before {
+    content: "No messages yet. Ask Repo Cat a question about this repository!";
+    color: #999;
+    font-style: italic;
+    display: block;
+    text-align: center;
+    padding: 20px 0;
+}

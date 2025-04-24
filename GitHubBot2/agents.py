@@ -394,3 +394,90 @@ class ChatbotAgent:
             relevant_files = dict(list(repo_content.items())[:max_files])
             
         return relevant_files
+
+
+class PRReviewAgent:
+    """Agent for reviewing GitHub Pull Requests and providing professional code feedback."""
+    
+    def __init__(self):
+        self.client = Together(api_key=your_api_key)
+    
+    def review_pr(self, pr_details, target_branch_code):
+        """
+        Review a GitHub pull request and provide professional code suggestions.
+        
+        Args:
+            pr_details: Dictionary containing PR files, metadata, and changes
+            target_branch_code: Dictionary of target branch files and their content
+            
+        Returns:
+            A dictionary containing code suggestions and optimization recommendations
+        """
+        # Extract PR information
+        pr_title = pr_details.get("title", "Untitled PR")
+        pr_description = pr_details.get("description", "No description")
+        changed_files = pr_details.get("changed_files", [])
+        
+        # Prepare context for the review
+        context = f"Pull Request: {pr_title}\nDescription: {pr_description}\n\n"
+        
+        # Add changed files info
+        if changed_files:
+            context += "Files changed in this PR:\n"
+            for file_info in changed_files:
+                filename = file_info.get("filename", "unknown")
+                changes = file_info.get("patch", "No changes available")
+                context += f"--- {filename} ---\n{changes}\n\n"
+        
+        # Add target branch context for the files that were changed
+        relevant_target_files = {}
+        for file_info in changed_files:
+            filename = file_info.get("filename", "")
+            if filename in target_branch_code:
+                relevant_target_files[filename] = target_branch_code[filename]
+        
+        if relevant_target_files:
+            context += "Relevant files in target branch:\n"
+            for filename, content in relevant_target_files.items():
+                # Truncate long files
+                if len(content) > 1000:
+                    truncated_content = content[:1000] + "..."
+                    context += f"--- {filename} (truncated) ---\n{truncated_content}\n\n"
+                else:
+                    context += f"--- {filename} ---\n{content}\n\n"
+        
+        # Generate code review
+        code_review_prompt = f"""SYSTEM: You are a senior software developer reviewing a GitHub Pull Request.
+        Provide professional, constructive feedback on the code changes. Focus on:
+        
+        1. Code style and adherence to best practices
+        2. Potential bugs or issues
+        3. Architecture and design considerations
+        4. Performance implications
+        
+        CONTEXT INFORMATION:
+        {context}
+        
+        Provide your code review in the following format:
+        
+        ## Overall Assessment
+        [A brief 2-3 sentence assessment of the PR]
+        
+        ## Code Quality Suggestions
+        - [Specific suggestion 1 with code example if applicable]
+        - [Specific suggestion 2 with code example if applicable]
+        - [Add more if necessary, at least 3 suggestions]
+        
+        ## Optimization Opportunities
+        - [Specific optimization 1 with code example if applicable]
+        - [Specific optimization 2 with code example if applicable]
+        - [Add more if necessary, at least 2 suggestions]
+        
+        Your review should be professional, specific, and actionable. Provide code examples where appropriate.
+        """
+        
+        review_result = prompt_llm(code_review_prompt)
+        
+        return {
+            "review": review_result
+        }

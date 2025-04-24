@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, jsonify, url_for, send_from_directory
 import requests
 from bs4 import BeautifulSoup
-from agents import SummarizerAgent, InsightAgent, RecommenderAgent, QuestionGeneratorAgent, CLISetupAgent, ChatbotAgent
-from github_utils import get_repo_content, get_repo_structure, get_repo_metadata, is_github_url
+from agents import SummarizerAgent, InsightAgent, RecommenderAgent, QuestionGeneratorAgent, CLISetupAgent, ChatbotAgent, PRReviewAgent
+from github_utils import get_repo_content, get_repo_structure, get_repo_metadata, is_github_url, get_pr_details, get_target_branch_code
 import os
 
 app = Flask(__name__)
@@ -12,6 +12,7 @@ recommender_agent = RecommenderAgent()
 question_generator = QuestionGeneratorAgent()
 cli_setup_agent = CLISetupAgent()
 chatbot_agent = ChatbotAgent()  # Initialize the new ChatbotAgent
+pr_review_agent = PRReviewAgent()  # Initialize the new PRReviewAgent
 
 @app.route('/templates/<path:filename>')
 def serve_template_file(filename):
@@ -238,6 +239,45 @@ def chat():
         })
     except Exception as e:
         return jsonify({"error": f"Error answering question: {str(e)}"}), 500
+
+@app.route("/review_pr", methods=["POST"])
+def review_pr():
+    """Review a GitHub Pull Request and provide professional code suggestions."""
+    pr_url = request.json.get("pr_url", "")
+    max_files = request.json.get("max_files", 10)  # Default to 10 files
+    file_types = request.json.get("file_types", None)  # Default to all code files
+    
+    if not pr_url:
+        return jsonify({"error": "No PR URL provided"}), 400
+    
+    try:
+        # Step 1: Fetch PR details
+        pr_details = get_pr_details(pr_url, max_files=max_files, file_types=file_types)
+        if "error" in pr_details:
+            return jsonify({"error": pr_details["error"]}), 500
+        
+        # Step 2: Fetch target branch code
+        target_branch_code = get_target_branch_code(pr_url, max_files=max_files, file_types=file_types)
+        if "error" in target_branch_code:
+            return jsonify({"error": target_branch_code["error"]}), 500
+        
+        # Step 3: Generate PR review
+        review_result = pr_review_agent.review_pr(pr_details, target_branch_code)
+        
+        # Step 4: Return the results
+        return jsonify({
+            "pr_title": pr_details.get("title", ""),
+            "pr_user": pr_details.get("user", ""),
+            "target_branch": pr_details.get("target_branch", ""),
+            "source_branch": pr_details.get("source_branch", ""),
+            "changed_files_count": len(pr_details.get("changed_files", [])),
+            "total_file_count": pr_details.get("total_file_count", 0),
+            "review": review_result.get("review", "Error generating review"),
+            "analyzed_files": [file["filename"] for file in pr_details.get("changed_files", [])]
+        })
+    
+    except Exception as e:
+        return jsonify({"error": f"Error reviewing PR: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001, host="0.0.0.0")

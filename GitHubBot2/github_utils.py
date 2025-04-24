@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import base64
 import re
+import os
 from urllib.parse import urlparse
 
 def is_github_url(url):
@@ -114,3 +115,197 @@ def get_repo_metadata(url):
     
     except Exception as e:
         return {"error": f"Error fetching repository metadata: {str(e)}"}
+
+def parse_github_pr_url(url):
+    """Extract owner, repo, and PR number from GitHub PR URL."""
+    pattern = r'https?://github\.com/([^/]+)/([^/]+)/pull/(\d+)'
+    match = re.match(pattern, url)
+    if match:
+        owner, repo, pr_number = match.groups()
+        return owner, repo, pr_number
+    return None, None, None
+
+def get_pr_details(pr_url, max_files=25, file_types=None):
+    """
+    Get details of a GitHub Pull Request including changed files and their contents.
+    Returns a dictionary with PR metadata and changes.
+    
+    Args:
+        pr_url: URL of the GitHub PR
+        max_files: Maximum number of files to fetch (default: 25)
+        file_types: List of file extensions to include (default: None = all code files)
+    """
+    owner, repo, pr_number = parse_github_pr_url(pr_url)
+    if not owner or not repo or not pr_number:
+        return {"error": "Invalid GitHub PR URL format"}
+    
+    try:
+        # Fetch PR information
+        api_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}"
+        response = requests.get(api_url)
+        response.raise_for_status()
+        
+        pr_data = response.json()
+        
+        # Get PR metadata
+        pr_details = {
+            "title": pr_data.get("title", ""),
+            "description": pr_data.get("body", ""),
+            "user": pr_data.get("user", {}).get("login", ""),
+            "state": pr_data.get("state", ""),
+            "created_at": pr_data.get("created_at", ""),
+            "updated_at": pr_data.get("updated_at", ""),
+            "target_branch": pr_data.get("base", {}).get("ref", ""),
+            "source_branch": pr_data.get("head", {}).get("ref", ""),
+            "changed_files": [],
+            "total_file_count": pr_data.get("changed_files", 0)
+        }
+        
+        # Default file types to include if not specified
+        if file_types is None:
+            file_types = ['.py', '.js', '.html', '.css', '.md', '.java', '.ts', '.jsx', 
+                          '.tsx', '.go', '.c', '.cpp', '.h', '.hpp', '.json', '.yml', 
+                          '.yaml', '.sh', '.txt', '.sql']
+        
+        # Fetch PR changed files with pagination
+        page = 1
+        files_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files?per_page=100&page={page}"
+        
+        while True:
+            files_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files?per_page=100&page={page}"
+            files_response = requests.get(files_url)
+            files_response.raise_for_status()
+            
+            files_data = files_response.json()
+            
+            # If no more files, break the loop
+            if not files_data:
+                break
+                
+            # Process each file in this page
+            for file_data in files_data:
+                filename = file_data.get("filename", "")
+                
+                # Skip binary files and non-code files
+                file_ext = os.path.splitext(filename)[1].lower()
+                if file_types and file_ext not in file_types:
+                    continue
+                    
+                file_info = {
+                    "filename": filename,
+                    "status": file_data.get("status", ""),  # added, modified, removed
+                    "additions": file_data.get("additions", 0),
+                    "deletions": file_data.get("deletions", 0),
+                    "patch": file_data.get("patch", "")
+                }
+                
+                # Add file content if it exists in the PR
+                if file_data.get("status") != "removed":
+                    try:
+                        file_content_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{pr_data['head']['sha']}/{filename}"
+                        content_response = requests.get(file_content_url)
+                        
+                        if content_response.status_code == 200:
+                            file_info["content"] = content_response.text
+                    except Exception as e:
+                        file_info["content_error"] = str(e)
+                
+                pr_details["changed_files"].append(file_info)
+                
+                # Stop when we reach the maximum number of files
+                if len(pr_details["changed_files"]) >= max_files:
+                    break
+            
+            # If we've reached max files or there are no more pages, break
+            if len(pr_details["changed_files"]) >= max_files or len(files_data) < 100:
+                break
+                
+            # Move to next page
+            page += 1
+        
+        return pr_details
+    
+    except Exception as e:
+        return {"error": f"Error fetching PR details: {str(e)}"}
+
+def get_target_branch_code(pr_url, max_files=25, file_types=None):
+    """
+    Get the code from the target branch of a PR.
+    Returns a dictionary of filenames and their content from the target branch.
+    
+    Args:
+        pr_url: URL of the GitHub PR
+        max_files: Maximum number of files to fetch (default: 25)
+        file_types: List of file extensions to include (default: None = all code files)
+    """
+    owner, repo, pr_number = parse_github_pr_url(pr_url)
+    if not owner or not repo or not pr_number:
+        return {"error": "Invalid GitHub PR URL format"}
+    
+    try:
+        # First get the PR to find the target branch name
+        api_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}"
+        response = requests.get(api_url)
+        response.raise_for_status()
+        
+        pr_data = response.json()
+        target_branch = pr_data.get("base", {}).get("ref", "main")  # Default to main if not found
+        
+        # Default file types to include if not specified
+        if file_types is None:
+            file_types = ['.py', '.js', '.html', '.css', '.md', '.java', '.ts', '.jsx', 
+                          '.tsx', '.go', '.c', '.cpp', '.h', '.hpp', '.json', '.yml', 
+                          '.yaml', '.sh', '.txt', '.sql']
+        
+        # Get files that were changed in the PR with pagination
+        page = 1
+        target_branch_code = {}
+        
+        while True:
+            files_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files?per_page=100&page={page}"
+            files_response = requests.get(files_url)
+            files_response.raise_for_status()
+            
+            files_data = files_response.json()
+            
+            # If no more files, break the loop
+            if not files_data:
+                break
+                
+            # Get the changed filenames from this page
+            for file_data in files_data:
+                filename = file_data.get("filename")
+                
+                # Skip if filename is None or non-matching extension
+                if not filename:
+                    continue
+                    
+                file_ext = os.path.splitext(filename)[1].lower()
+                if file_types and file_ext not in file_types:
+                    continue
+                
+                try:
+                    # Get file content from target branch
+                    file_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{target_branch}/{filename}"
+                    file_response = requests.get(file_url)
+                    
+                    if file_response.status_code == 200:
+                        target_branch_code[filename] = file_response.text
+                except Exception as e:
+                    print(f"Error fetching {filename} from target branch: {str(e)}")
+                    
+                # Stop when we reach the maximum number of files
+                if len(target_branch_code) >= max_files:
+                    break
+            
+            # If we've reached max files or there are no more pages, break
+            if len(target_branch_code) >= max_files or len(files_data) < 100:
+                break
+                
+            # Move to next page
+            page += 1
+        
+        return target_branch_code
+    
+    except Exception as e:
+        return {"error": f"Error fetching target branch code: {str(e)}"}

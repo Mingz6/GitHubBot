@@ -167,12 +167,20 @@ footer .fa-cat, footer .fa-paw {
 
 /* Chat interface styling */
 .chat-messages {
-    max-height: 300px;
+    max-height: 50vh; /* 50% of viewport height by default */
     overflow-y: auto;
     padding: 10px;
     border: 1px solid var(--cat-secondary);
     border-radius: 10px;
     background-color: var(--cat-light);
+}
+
+#chat-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 250px;
+    max-height: 70vh; /* Maximum height is 70% of viewport height */
+    transition: all 0.3s ease;
 }
 
 .chat-message {

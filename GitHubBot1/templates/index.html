@@ -49,6 +49,32 @@
         </div>
         
         <div id="results" class="d-none">
+            <!-- New chatbot interface card -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Chat with Repo Cat</h5>
+                    <img src="https://cdn-icons-png.flaticon.com/512/1864/1864654.png" class="cat-corner cat-top-right">
+                    <p class="card-text">Ask any question about this repository and get immediate answers!</p>
+                    
+                    <div id="chat-container" class="d-flex flex-column">
+                        <div id="chat-messages" class="chat-messages mb-3 flex-grow-1"></div>
+                        
+                        <div class="chat-input-container d-flex mt-auto">
+                            <input type="text" id="chat-input" class="form-control me-2" 
+                                placeholder="Ask about setup, functionality, or code structure...">
+                            <button id="chat-submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <div id="chat-loading" class="chat-loading mt-2 d-none">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span class="ms-2">Repo Cat is thinking...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="card mb-3">
                 <div class="card-body">
                     <h5 class="card-title">Re-paw-sitory Summaries</h5>
@@ -95,33 +121,6 @@
                     <h5 class="card-title">Quiz Questions (Cat-egories)</h5>
                     <img src="https://cdn-icons-png.flaticon.com/512/1864/1864504.png" class="cat-corner cat-top-right">
                     <div id="questions"></div>
-                </div>
-            </div>
-            
-            <!-- New chatbot interface card -->
-            <div class="card mb-3">
-                <div class="card-body">
-                    <h5 class="card-title">Chat with Repo Cat</h5>
-                    <img src="https://cdn-icons-png.flaticon.com/512/1864/1864654.png" class="cat-corner cat-top-right">
-                    <p class="card-text">Ask any question about this repository and get immediate answers!</p>
-                    
-                    <div id="chat-container">
-                        <div id="chat-messages" class="chat-messages mb-3"></div>
-                        
-                        <div class="chat-input-container d-flex">
-                            <input type="text" id="chat-input" class="form-control me-2" 
-                                placeholder="Ask about setup, functionality, or code structure...">
-                            <button id="chat-submit" class="btn btn-primary">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </div>
-                        <div id="chat-loading" class="chat-loading mt-2 d-none">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <span class="ms-2">Repo Cat is thinking...</span>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -421,6 +420,51 @@
                     }, 1000);
                 }
             };
+            
+            // Add chat container resize functionality
+            function resizeChatContainer() {
+                const chatContainer = document.getElementById('chat-container');
+                const chatMessages = document.getElementById('chat-messages');
+                
+                if (!chatContainer || !chatMessages) return;
+                
+                // Get viewport height and calculate appropriate height
+                const viewportHeight = window.innerHeight;
+                const messageCount = chatMessages.childElementCount;
+                
+                // Start with a base height depending on message count
+                let desiredHeight = 250; // Minimum height
+                
+                // Add height based on message count
+                if (messageCount > 0) {
+                    // Approximate height per message (adjust as needed based on your design)
+                    const heightPerMessage = 80; // pixels per message
+                    desiredHeight = Math.max(desiredHeight, messageCount * heightPerMessage + 100);
+                }
+                
+                // Limit to maximum height (70% of viewport)
+                const maxHeight = Math.floor(viewportHeight * 0.7);
+                desiredHeight = Math.min(desiredHeight, maxHeight);
+                
+                // Apply height to chat container
+                chatContainer.style.height = `${desiredHeight}px`;
+                
+                // Messages container should have some space for the input box
+                chatMessages.style.maxHeight = `${desiredHeight - 60}px`;
+            }
+            
+            // Call resize function when messages are added
+            const originalAddMessage = addMessage;
+            addMessage = function(text, isUser = false) {
+                originalAddMessage(text, isUser);
+                resizeChatContainer();
+            };
+            
+            // Call resize on window resize
+            window.addEventListener('resize', resizeChatContainer);
+            
+            // Initial resize
+            setTimeout(resizeChatContainer, 100);
         });
     </script>
 </body>

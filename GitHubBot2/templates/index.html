@@ -15,7 +15,12 @@
         <!-- Navigation tabs -->
         <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="repo-tab" data-bs-toggle="tab" data-bs-target="#repo-panel" type="button" role="tab" aria-controls="repo-panel" aria-selected="true">
+                <button class="nav-link active" id="agent-tab" data-bs-toggle="tab" data-bs-target="#agent-panel" type="button" role="tab" aria-controls="agent-panel" aria-selected="true">
+                    <i class="fas fa-cat me-2"></i>Repository Agent
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="repo-tab" data-bs-toggle="tab" data-bs-target="#repo-panel" type="button" role="tab" aria-controls="repo-panel" aria-selected="false">
                     <i class="fas fa-code-branch me-2"></i>Repository Analysis
                 </button>
             </li>
@@ -28,8 +33,61 @@
         
         <!-- Tab content -->
         <div class="tab-content" id="mainTabsContent">
-            <!-- Repository Analysis Tab -->
-            <div class="tab-pane fade show active" id="repo-panel" role="tabpanel" aria-labelledby="repo-tab">
+            <!-- Repository Agent Tab (New default tab) -->
+            <div class="tab-pane fade show active" id="agent-panel" role="tabpanel" aria-labelledby="agent-tab">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Connect to GitHub Repository</h5>
+                        <img src="https://cdn-icons-png.flaticon.com/512/1864/1864514.png" class="cat-corner cat-top-right">
+                        <form id="agentRepoForm">
+                            <div class="mb-3">
+                                <label for="agent_repo_url" class="form-label">GitHub Repository URL <i class="fas fa-cat" style="color: var(--cat-accent);"></i></label>
+                                <input type="url" class="form-control" id="agent_repo_url" name="agent_repo_url" 
+                                       placeholder="https://github.com/username/repository" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plug me-2"></i> Connect to Repository
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div id="agent-loading" class="loading">
+                    <img src="https://media.giphy.com/media/VbnUQpnihPSIgIXuZv/giphy.gif" alt="Cat loading animation">
+                    <p>Connecting to repository... Our cat agent is preparing for communication!</p>
+                </div>
+                
+                <div id="agent-interface" class="d-none">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Chat with Repo Cat</h5>
+                            <img src="https://cdn-icons-png.flaticon.com/512/1864/1864654.png" class="cat-corner cat-top-right">
+                            <p class="card-text">Ask any question about this repository and get immediate answers!</p>
+                            
+                            <div id="chat-container" class="d-flex flex-column">
+                                <div id="chat-messages" class="chat-messages mb-3 flex-grow-1"></div>
+                                
+                                <div class="chat-input-container d-flex mt-auto">
+                                    <input type="text" id="chat-input" class="form-control me-2" 
+                                        placeholder="Ask about setup, functionality, or code structure...">
+                                    <button id="chat-submit" class="btn btn-primary">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                                <div id="chat-loading" class="chat-loading mt-2 d-none">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <span class="ms-2">Repo Cat is thinking...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Repository Analysis Tab (No longer default) -->
+            <div class="tab-pane fade" id="repo-panel" role="tabpanel" aria-labelledby="repo-tab">
                 <div class="card mb-4">
                     <div class="card-body">
                         <h5 class="card-title">Analyze GitHub Repository</h5>
@@ -67,33 +125,6 @@
                 </div>
                 
                 <div id="results" class="d-none">
-                    <!-- Repository analysis results here -->
-                    <!-- New chatbot interface card -->
-                    <div class="card mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">Chat with Repo Cat</h5>
-                            <img src="https://cdn-icons-png.flaticon.com/512/1864/1864654.png" class="cat-corner cat-top-right">
-                            <p class="card-text">Ask any question about this repository and get immediate answers!</p>
-                            
-                            <div id="chat-container" class="d-flex flex-column">
-                                <div id="chat-messages" class="chat-messages mb-3 flex-grow-1"></div>
-                                
-                                <div class="chat-input-container d-flex mt-auto">
-                                    <input type="text" id="chat-input" class="form-control me-2" 
-                                        placeholder="Ask about setup, functionality, or code structure...">
-                                    <button id="chat-submit" class="btn btn-primary">
-                                        <i class="fas fa-paper-plane"></i>
-                                    </button>
-                                </div>
-                                <div id="chat-loading" class="chat-loading mt-2 d-none">
-                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <span class="ms-2">Repo Cat is thinking...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     <div class="card mb-3">
                         <div class="card-body">
                             <h5 class="card-title">Re-paw-sitory Summaries</h5>
@@ -388,6 +419,93 @@
                 }
             });
             
+            // Handle the Repository Agent form submission
+            const agentRepoForm = document.getElementById('agentRepoForm');
+            const agentLoading = document.getElementById('agent-loading');
+            const agentInterface = document.getElementById('agent-interface');
+            
+            agentRepoForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const repoUrl = document.getElementById('agent_repo_url').value;
+                
+                if (!repoUrl) {
+                    alert('Please enter a valid GitHub repository URL');
+                    return;
+                }
+                
+                // Show loading
+                agentLoading.style.display = 'block';
+                agentInterface.classList.add('d-none');
+                
+                try {
+                    // Fetch repository data
+                    const response = await fetch('/workflow', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            repo_url: repoUrl,
+                            goal: "Chat with repository agent",
+                            persona: "Developer"
+                        }),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        // Store repository data for chat functionality
+                        repoData = {
+                            url: repoUrl,
+                            content: data.repo_content || {},
+                            metadata: data.repo_metadata || {},
+                            summaries: data.summaries || {},
+                            insights: data.insights || ''
+                        };
+                        
+                        // Show the chat interface
+                        agentInterface.classList.remove('d-none');
+                        
+                        // Scroll to chat interface
+                        agentInterface.scrollIntoView({ behavior: 'smooth' });
+                        
+                        // Clear any previous messages
+                        if (chatMessages) {
+                            chatMessages.innerHTML = '';
+                        }
+                        
+                        // Add a welcome message
+                        setTimeout(() => {
+                            addMessage(`😺 Meow! I'm connected to ${data.repo_metadata.name || 'your repository'}. Ask me anything about the code structure, setup, or functionality!`, false);
+                        }, 500);
+                        
+                        // Add a cat emoji to the chat card
+                        const randomCatEmojis = ['🐱', '😸', '😹', '😻', '😽', '🙀', '😿', '😾', '🐈', '🐾'];
+                        const randomEmoji = randomCatEmojis[Math.floor(Math.random() * randomCatEmojis.length)];
+                        const cardBody = agentInterface.querySelector('.card-body');
+                        const emojiSpan = document.createElement('span');
+                        emojiSpan.style.position = 'absolute';
+                        emojiSpan.style.bottom = '10px';
+                        emojiSpan.style.right = '10px';
+                        emojiSpan.style.fontSize = '24px';
+                        emojiSpan.textContent = randomEmoji;
+                        cardBody.appendChild(emojiSpan);
+                        
+                        // Resize the chat container
+                        resizeChatContainer();
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to connect to repository'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                } finally {
+                    // Hide loading
+                    agentLoading.style.display = 'none';
+                }
+            });
+            
             // Chat functionality
             const chatInput = document.getElementById('chat-input');
             const chatSubmit = document.getElementById('chat-submit');
@@ -551,27 +669,21 @@
                 
                 // Get viewport height and calculate appropriate height
                 const viewportHeight = window.innerHeight;
-                const messageCount = chatMessages.childElementCount;
                 
-                // Start with a base height depending on message count
-                let desiredHeight = 250; // Minimum height
+                // Default to taking up 80% of viewport height minus space for headers
+                const headerHeight = document.querySelector('h1').offsetHeight + 
+                                    document.querySelector('.nav-tabs').offsetHeight +
+                                    document.querySelector('#agent-panel .card').offsetHeight + 60; // Add padding
                 
-                // Add height based on message count
-                if (messageCount > 0) {
-                    // Approximate height per message (adjust as needed based on your design)
-                    const heightPerMessage = 80; // pixels per message
-                    desiredHeight = Math.max(desiredHeight, messageCount * heightPerMessage + 100);
-                }
-                
-                // Limit to maximum height (70% of viewport)
-                const maxHeight = Math.floor(viewportHeight * 0.7);
-                desiredHeight = Math.min(desiredHeight, maxHeight);
+                // Calculate the available height for chat
+                const availableHeight = viewportHeight - headerHeight;
+                const optimalHeight = Math.max(250, Math.min(availableHeight * 0.9, viewportHeight * 0.8));
                 
                 // Apply height to chat container
-                chatContainer.style.height = `${desiredHeight}px`;
+                chatContainer.style.height = `${optimalHeight}px`;
                 
                 // Messages container should have some space for the input box
-                chatMessages.style.maxHeight = `${desiredHeight - 60}px`;
+                chatMessages.style.maxHeight = `${optimalHeight - 60}px`;
             }
             
             // Call resize function when messages are added

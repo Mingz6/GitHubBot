@@ -21,10 +21,14 @@ def parse_github_url(url):
             return owner, repo
     return None, None
 
-def get_repo_content(url):
+def get_repo_content(url, auth=None):
     """
     Get content from a GitHub repository using GitHub's API.
     Returns a dictionary of filenames and their content.
+    
+    Args:
+        url: GitHub repository URL
+        auth: Optional tuple of (username, token) for authentication
     """
     owner, repo = parse_github_url(url)
     if not owner or not repo:
@@ -33,7 +37,16 @@ def get_repo_content(url):
     try:
         # Fetch repository contents
         api_url = f"https://api.github.com/repos/{owner}/{repo}/contents"
-        response = requests.get(api_url)
+        headers = {}
+        
+        # Add authentication if provided
+        if auth and len(auth) == 2:
+            import base64
+            username, token = auth
+            auth_header = base64.b64encode(f"{username}:{token}".encode()).decode()
+            headers["Authorization"] = f"Basic {auth_header}"
+        
+        response = requests.get(api_url, headers=headers)
         response.raise_for_status()
         
         contents = response.json()
@@ -43,7 +56,7 @@ def get_repo_content(url):
         for item in contents:
             if item['type'] == 'file' and item['name'].endswith(('.py', '.js', '.html', '.css', '.md')):
                 # Get file content
-                file_response = requests.get(item['url'])
+                file_response = requests.get(item['url'], headers=headers)
                 file_response.raise_for_status()
                 file_data = file_response.json()
                 
@@ -60,24 +73,35 @@ def get_repo_content(url):
     except Exception as e:
         return {"error": f"Error fetching repository: {str(e)}"}
 
-def get_repo_structure(url):
+def get_repo_structure(url, auth=None):
     """
     Get the structure of a GitHub repository.
     Returns a list of file paths in the repository.
+    
+    Args:
+        url: GitHub repository URL
+        auth: Optional tuple of (username, token) for authentication
     """
     owner, repo = parse_github_url(url)
     if not owner or not repo:
         return {"error": "Invalid GitHub URL format"}
     
     try:
+        # Prepare headers for authentication
+        headers = {}
+        if auth and len(auth) == 2:
+            username, token = auth
+            auth_header = base64.b64encode(f"{username}:{token}".encode()).decode()
+            headers["Authorization"] = f"Basic {auth_header}"
+        
         # Use GitHub's API to get repository contents
         api_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/main?recursive=1"
-        response = requests.get(api_url)
+        response = requests.get(api_url, headers=headers)
         
         # If 'main' branch doesn't exist, try 'master'
         if response.status_code != 200:
             api_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/master?recursive=1"
-            response = requests.get(api_url)
+            response = requests.get(api_url, headers=headers)
             
         response.raise_for_status()
         data = response.json()
@@ -89,9 +113,13 @@ def get_repo_structure(url):
     except Exception as e:
         return {"error": f"Error fetching repository structure: {str(e)}"}
 
-def get_repo_metadata(url):
+def get_repo_metadata(url, auth=None):
     """
     Get metadata about a GitHub repository such as description, stars, etc.
+    
+    Args:
+        url: GitHub repository URL
+        auth: Optional tuple of (username, token) for authentication
     """
     owner, repo = parse_github_url(url)
     if not owner or not repo:
@@ -100,7 +128,15 @@ def get_repo_metadata(url):
     try:
         # Use GitHub's API to get repository information
         api_url = f"https://api.github.com/repos/{owner}/{repo}"
-        response = requests.get(api_url)
+        
+        # Prepare headers for authentication
+        headers = {}
+        if auth and len(auth) == 2:
+            username, token = auth
+            auth_header = base64.b64encode(f"{username}:{token}".encode()).decode()
+            headers["Authorization"] = f"Basic {auth_header}"
+        
+        response = requests.get(api_url, headers=headers)
         response.raise_for_status()
         
         data = response.json()
@@ -125,7 +161,7 @@ def parse_github_pr_url(url):
         return owner, repo, pr_number
     return None, None, None
 
-def get_pr_details(pr_url, max_files=25, file_types=None):
+def get_pr_details(pr_url, max_files=25, file_types=None, auth=None):
     """
     Get details of a GitHub Pull Request including changed files and their contents.
     Returns a dictionary with PR metadata and changes.
@@ -134,15 +170,23 @@ def get_pr_details(pr_url, max_files=25, file_types=None):
         pr_url: URL of the GitHub PR
         max_files: Maximum number of files to fetch (default: 25)
         file_types: List of file extensions to include (default: None = all code files)
+        auth: Optional tuple of (username, token) for authentication
     """
     owner, repo, pr_number = parse_github_pr_url(pr_url)
     if not owner or not repo or not pr_number:
         return {"error": "Invalid GitHub PR URL format"}
     
     try:
+        # Prepare headers for authentication
+        headers = {}
+        if auth and len(auth) == 2:
+            username, token = auth
+            auth_header = base64.b64encode(f"{username}:{token}".encode()).decode()
+            headers["Authorization"] = f"Basic {auth_header}"
+            
         # Fetch PR information
         api_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}"
-        response = requests.get(api_url)
+        response = requests.get(api_url, headers=headers)
         response.raise_for_status()
         
         pr_data = response.json()
@@ -169,11 +213,10 @@ def get_pr_details(pr_url, max_files=25, file_types=None):
         
         # Fetch PR changed files with pagination
         page = 1
-        files_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files?per_page=100&page={page}"
         
         while True:
             files_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files?per_page=100&page={page}"
-            files_response = requests.get(files_url)
+            files_response = requests.get(files_url, headers=headers)
             files_response.raise_for_status()
             
             files_data = files_response.json()
@@ -203,7 +246,7 @@ def get_pr_details(pr_url, max_files=25, file_types=None):
                 if file_data.get("status") != "removed":
                     try:
                         file_content_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{pr_data['head']['sha']}/{filename}"
-                        content_response = requests.get(file_content_url)
+                        content_response = requests.get(file_content_url, headers=headers)
                         
                         if content_response.status_code == 200:
                             file_info["content"] = content_response.text
@@ -228,7 +271,7 @@ def get_pr_details(pr_url, max_files=25, file_types=None):
     except Exception as e:
         return {"error": f"Error fetching PR details: {str(e)}"}
 
-def get_target_branch_code(pr_url, max_files=25, file_types=None):
+def get_target_branch_code(pr_url, max_files=25, file_types=None, auth=None):
     """
     Get the code from the target branch of a PR.
     Returns a dictionary of filenames and their content from the target branch.
@@ -237,15 +280,23 @@ def get_target_branch_code(pr_url, max_files=25, file_types=None):
         pr_url: URL of the GitHub PR
         max_files: Maximum number of files to fetch (default: 25)
         file_types: List of file extensions to include (default: None = all code files)
+        auth: Optional tuple of (username, token) for authentication
     """
     owner, repo, pr_number = parse_github_pr_url(pr_url)
     if not owner or not repo or not pr_number:
         return {"error": "Invalid GitHub PR URL format"}
     
     try:
+        # Prepare headers for authentication
+        headers = {}
+        if auth and len(auth) == 2:
+            username, token = auth
+            auth_header = base64.b64encode(f"{username}:{token}".encode()).decode()
+            headers["Authorization"] = f"Basic {auth_header}"
+        
         # First get the PR to find the target branch name
         api_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}"
-        response = requests.get(api_url)
+        response = requests.get(api_url, headers=headers)
         response.raise_for_status()
         
         pr_data = response.json()
@@ -263,7 +314,7 @@ def get_target_branch_code(pr_url, max_files=25, file_types=None):
         
         while True:
             files_url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files?per_page=100&page={page}"
-            files_response = requests.get(files_url)
+            files_response = requests.get(files_url, headers=headers)
             files_response.raise_for_status()
             
             files_data = files_response.json()
@@ -287,7 +338,7 @@ def get_target_branch_code(pr_url, max_files=25, file_types=None):
                 try:
                     # Get file content from target branch
                     file_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{target_branch}/{filename}"
-                    file_response = requests.get(file_url)
+                    file_response = requests.get(file_url, headers=headers)
                     
                     if file_response.status_code == 200:
                         target_branch_code[filename] = file_response.text
@@ -309,3 +360,26 @@ def get_target_branch_code(pr_url, max_files=25, file_types=None):
     
     except Exception as e:
         return {"error": f"Error fetching target branch code: {str(e)}"}
+
+def verify_github_credentials(username, token):
+    """
+    Verify GitHub credentials by making a test API call.
+    Returns True if credentials are valid, False otherwise.
+    
+    Args:
+        username: GitHub username
+        token: GitHub personal access token
+    """
+    try:
+        # Create authentication header
+        auth_header = base64.b64encode(f"{username}:{token}".encode()).decode()
+        headers = {"Authorization": f"Basic {auth_header}"}
+        
+        # Make a test API call to get user information
+        response = requests.get("https://api.github.com/user", headers=headers)
+        
+        # Return True if the request was successful (status code 200)
+        return response.status_code == 200
+    except Exception as e:
+        print(f"Error verifying GitHub credentials: {str(e)}")
+        return False

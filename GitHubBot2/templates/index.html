@@ -29,6 +29,11 @@
                     <i class="fas fa-code-pull-request me-2"></i>PR Review
                 </button>
             </li>
+            <li class="nav-item ms-auto" role="presentation">
+                <button class="nav-link" id="login-tab" data-bs-toggle="tab" data-bs-target="#login-panel" type="button" role="tab" aria-controls="login-panel" aria-selected="false">
+                    <i class="fas fa-sign-in-alt me-2"></i>GitHub Login
+                </button>
+            </li>
         </ul>
         
         <!-- Tab content -->
@@ -120,7 +125,7 @@
                 </div>
                 
                 <div id="loading" class="loading">
-                    <img src="https://media.giphy.com/media/VbnUQpnihPSIgIXuZv/giphy.gif" alt="Cat loading animation">
+                    <img src="https://media.giphy.com/media/LmNwrBhejkK9EFP504/giphy.gif" alt="Cat typing animation">
                     <p>Analyzing repository... Our cat experts are pawing through the code!</p>
                 </div>
                 
@@ -267,6 +272,62 @@
                             <h5 class="card-title">Senior Developer Review</h5>
                             <img src="https://cdn-icons-png.flaticon.com/512/1864/1864464.png" class="cat-corner cat-top-right">
                             <div id="pr-review" class="review-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- GitHub Login Tab -->
+            <div class="tab-pane fade" id="login-panel" role="tabpanel" aria-labelledby="login-tab">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">GitHub Authentication</h5>
+                        <img src="https://cdn-icons-png.flaticon.com/512/1864/1864509.png" class="cat-corner cat-top-right">
+                        
+                        <div id="login-status-container" class="mb-4 d-none">
+                            <div class="alert alert-success" id="login-success">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <span>You are logged in to GitHub as <strong id="github-username">username</strong></span>
+                            </div>
+                            <button id="logout-button" class="btn btn-outline-secondary">
+                                <i class="fas fa-sign-out-alt me-2"></i> Logout from GitHub
+                            </button>
+                        </div>
+                        
+                        <form id="github-login-form">
+                            <div class="mb-3">
+                                <label for="github_username" class="form-label">GitHub Username <i class="fas fa-user" style="color: var(--cat-accent);"></i></label>
+                                <input type="text" class="form-control" id="github_username" name="github_username" 
+                                       placeholder="Your GitHub username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="github_token" class="form-label">Personal Access Token <i class="fas fa-key" style="color: var(--cat-primary);"></i></label>
+                                <input type="password" class="form-control" id="github_token" name="github_token" 
+                                       placeholder="Your GitHub personal access token" required>
+                                <div class="form-text">
+                                    We recommend using a <a href="https://github.com/settings/tokens" target="_blank">personal access token</a> with 'repo' scope.
+                                    <br>Your credentials are only stored in your browser's local storage and are never sent to our servers.
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt me-2"></i> Connect to GitHub
+                            </button>
+                        </form>
+                        
+                        <div class="mt-4">
+                            <h6 class="mb-3"><i class="fas fa-info-circle me-2" style="color: var(--cat-accent);"></i>How to create a Personal Access Token:</h6>
+                            <ol>
+                                <li>Go to your GitHub <a href="https://github.com/settings/tokens" target="_blank">Personal Access Tokens</a> page</li>
+                                <li>Click "Generate new token" (classic)</li>
+                                <li>Give it a name (e.g., "Purr-fect Code Analyzer")</li>
+                                <li>Select the <strong>repo</strong> scope to access private repositories</li>
+                                <li>Click "Generate token" and copy the token value</li>
+                                <li>Paste the token in the field above</li>
+                            </ol>
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                For security, tokens are only shown once when created. If you lose it, you'll need to generate a new one.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -424,6 +485,7 @@
             const agentLoading = document.getElementById('agent-loading');
             const agentInterface = document.getElementById('agent-interface');
             
+            // Update the agentRepoForm to include GitHub auth
             agentRepoForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
@@ -439,17 +501,23 @@
                 agentInterface.classList.add('d-none');
                 
                 try {
+                    // Get GitHub credentials if available
+                    const requestData = {
+                        repo_url: repoUrl,
+                        goal: "Chat with repository agent",
+                        persona: "Developer"
+                    };
+                    
+                    // Add GitHub auth if available
+                    const authData = addAuthToRequest(requestData);
+                    
                     // Fetch repository data
                     const response = await fetch('/workflow', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({
-                            repo_url: repoUrl,
-                            goal: "Chat with repository agent",
-                            persona: "Developer"
-                        }),
+                        body: JSON.stringify(authData),
                     });
                     
                     const data = await response.json();
@@ -699,6 +767,143 @@
             // Initial resize
             setTimeout(resizeChatContainer, 100);
             
+            // GitHub Login Form Handling
+            const githubLoginForm = document.getElementById('github-login-form');
+            const loginStatusContainer = document.getElementById('login-status-container');
+            const logoutButton = document.getElementById('logout-button');
+            const githubUsername = document.getElementById('github-username');
+            
+            // Check if there are stored GitHub credentials
+            function checkStoredCredentials() {
+                const storedUsername = localStorage.getItem('github_username');
+                const storedToken = localStorage.getItem('github_token');
+                
+                if (storedUsername && storedToken) {
+                    // Display logged-in status
+                    githubUsername.textContent = storedUsername;
+                    loginStatusContainer.classList.remove('d-none');
+                    githubLoginForm.classList.add('d-none');
+                    
+                    // Update login tab to show login status
+                    const loginTab = document.getElementById('login-tab');
+                    loginTab.innerHTML = `<i class="fas fa-user-check me-2"></i>${storedUsername}`;
+                    
+                    return { username: storedUsername, token: storedToken };
+                } else {
+                    // Show login form
+                    loginStatusContainer.classList.add('d-none');
+                    githubLoginForm.classList.remove('d-none');
+                    
+                    // Reset login tab text
+                    const loginTab = document.getElementById('login-tab');
+                    loginTab.innerHTML = `<i class="fas fa-sign-in-alt me-2"></i>GitHub Login`;
+                    
+                    return null;
+                }
+            }
+            
+            // Handle GitHub login
+            githubLoginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('github_username').value;
+                const token = document.getElementById('github_token').value;
+                
+                if (!username || !token) {
+                    alert('Please enter both username and token');
+                    return;
+                }
+                
+                try {
+                    // Verify the credentials by making a test API call
+                    const response = await fetch('/verify_github_credentials', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            github_username: username,
+                            github_token: token
+                        }),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.valid) {
+                        // Store credentials in browser's localStorage
+                        localStorage.setItem('github_username', username);
+                        localStorage.setItem('github_token', token);
+                        
+                        // Update UI to show logged-in status
+                        githubUsername.textContent = username;
+                        loginStatusContainer.classList.remove('d-none');
+                        githubLoginForm.classList.add('d-none');
+                        
+                        // Update login tab to show login status
+                        const loginTab = document.getElementById('login-tab');
+                        loginTab.innerHTML = `<i class="fas fa-user-check me-2"></i>${username}`;
+                        
+                        alert('Successfully connected to GitHub!');
+                    } else {
+                        alert('Invalid GitHub credentials. Please check your username and token.');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error verifying GitHub credentials. Please try again.');
+                }
+            });
+            
+            // Handle logout
+            logoutButton.addEventListener('click', function() {
+                // Clear stored credentials
+                localStorage.removeItem('github_username');
+                localStorage.removeItem('github_token');
+                
+                // Update UI
+                loginStatusContainer.classList.add('d-none');
+                githubLoginForm.classList.remove('d-none');
+                
+                // Reset form fields
+                document.getElementById('github_username').value = '';
+                document.getElementById('github_token').value = '';
+                
+                // Reset login tab text
+                const loginTab = document.getElementById('login-tab');
+                loginTab.innerHTML = `<i class="fas fa-sign-in-alt me-2"></i>GitHub Login`;
+                
+                alert('You have been logged out from GitHub.');
+            });
+            
+            // Check for stored credentials on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                checkStoredCredentials();
+            });
+            
+            // Function to get stored GitHub credentials
+            function getGitHubCredentials() {
+                return {
+                    username: localStorage.getItem('github_username'),
+                    token: localStorage.getItem('github_token')
+                };
+            }
+            
+            // Update all API requests to include GitHub credentials if available
+            function addAuthToRequest(requestData) {
+                const credentials = getGitHubCredentials();
+                
+                if (credentials.username && credentials.token) {
+                    return {
+                        ...requestData,
+                        github_auth: {
+                            username: credentials.username,
+                            token: credentials.token
+                        }
+                    };
+                }
+                
+                return requestData;
+            }
+            
             // PR Review Form Handling
             const prForm = document.getElementById('prForm');
             const prLoading = document.getElementById('pr-loading');
@@ -745,16 +950,22 @@
                     // Scroll to the loading indicator
                     prLoading.scrollIntoView({ behavior: 'smooth' });
                     
+                    // Prepare the request data
+                    const requestData = {
+                        pr_url: prUrl,
+                        max_files: maxFiles,
+                        file_types: fileTypes
+                    };
+                    
+                    // Add GitHub auth if available
+                    const authData = addAuthToRequest(requestData);
+                    
                     const response = await fetch('/review_pr', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({
-                            pr_url: prUrl,
-                            max_files: maxFiles,
-                            file_types: fileTypes
-                        }),
+                        body: JSON.stringify(authData),
                     });
                     
                     const data = await response.json();

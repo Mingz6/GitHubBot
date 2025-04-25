@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify, url_for, send_from_d
 import requests
 from bs4 import BeautifulSoup
 from agents import SummarizerAgent, InsightAgent, RecommenderAgent, QuestionGeneratorAgent, CLISetupAgent, ChatbotAgent, PRReviewAgent
-from github_utils import get_repo_content, get_repo_structure, get_repo_metadata, is_github_url, get_pr_details, get_target_branch_code
+from github_utils import get_repo_content, get_repo_structure, get_repo_metadata, is_github_url, get_pr_details, get_target_branch_code, verify_github_credentials
 import os
 
 app = Flask(__name__)
@@ -124,18 +124,24 @@ def workflow():
     repo_url = request.json.get("repo_url", "")
     user_goal = request.json.get("goal", "Understand the codebase")
     persona = request.json.get("persona", "Developer")
+    github_auth = request.json.get("github_auth", None)
     
     if not repo_url or not is_github_url(repo_url):
         return jsonify({"error": "Valid GitHub repository URL required"}), 400
     
     try:
+        # Prepare authentication if provided
+        auth = None
+        if github_auth and 'username' in github_auth and 'token' in github_auth:
+            auth = (github_auth['username'], github_auth['token'])
+        
         # Step 1: Get repository content
-        repo_content = get_repo_content(repo_url)
+        repo_content = get_repo_content(repo_url, auth=auth)
         if "error" in repo_content:
             return jsonify({"error": repo_content["error"]}), 500
         
         # Get repository metadata
-        repo_metadata = get_repo_metadata(repo_url)
+        repo_metadata = get_repo_metadata(repo_url, auth=auth)
         # Ensure repo_metadata has the URL
         if "url" not in repo_metadata:
             repo_metadata["url"] = repo_url
@@ -205,15 +211,21 @@ def chat():
     repo_metadata = data.get("repo_metadata", {})
     summaries = data.get("summaries", {})
     insights = data.get("insights", "")
+    github_auth = data.get("github_auth", None)
     
     if not question:
         return jsonify({"error": "No question provided"}), 400
+    
+    # Prepare authentication if provided
+    auth = None
+    if github_auth and 'username' in github_auth and 'token' in github_auth:
+        auth = (github_auth['username'], github_auth['token'])
         
     if not repo_content and repo_url:
         # If content isn't provided but URL is, fetch the repository content
         if is_github_url(repo_url):
-            repo_content = get_repo_content(repo_url)
-            repo_metadata = get_repo_metadata(repo_url)
+            repo_content = get_repo_content(repo_url, auth=auth)
+            repo_metadata = get_repo_metadata(repo_url, auth=auth)
             # Ensure repo_metadata has the URL
             if "url" not in repo_metadata:
                 repo_metadata["url"] = repo_url
@@ -244,20 +256,26 @@ def chat():
 def review_pr():
     """Review a GitHub Pull Request and provide professional code suggestions."""
     pr_url = request.json.get("pr_url", "")
-    max_files = request.json.get("max_files", 10)  # Default to 10 files
+    max_files = request.json.get("max_files", 25)  # Default to 25 files
     file_types = request.json.get("file_types", None)  # Default to all code files
+    github_auth = request.json.get("github_auth", None)  # GitHub authentication
     
     if not pr_url:
         return jsonify({"error": "No PR URL provided"}), 400
     
     try:
+        # Prepare authentication if provided
+        auth = None
+        if github_auth and 'username' in github_auth and 'token' in github_auth:
+            auth = (github_auth['username'], github_auth['token'])
+            
         # Step 1: Fetch PR details
-        pr_details = get_pr_details(pr_url, max_files=max_files, file_types=file_types)
+        pr_details = get_pr_details(pr_url, max_files=max_files, file_types=file_types, auth=auth)
         if "error" in pr_details:
             return jsonify({"error": pr_details["error"]}), 500
         
         # Step 2: Fetch target branch code
-        target_branch_code = get_target_branch_code(pr_url, max_files=max_files, file_types=file_types)
+        target_branch_code = get_target_branch_code(pr_url, max_files=max_files, file_types=file_types, auth=auth)
         if "error" in target_branch_code:
             return jsonify({"error": target_branch_code["error"]}), 500
         
@@ -278,6 +296,24 @@ def review_pr():
     
     except Exception as e:
         return jsonify({"error": f"Error reviewing PR: {str(e)}"}), 500
+
+@app.route("/verify_github_credentials", methods=["POST"])
+def verify_credentials():
+    """Verify GitHub credentials and return status."""
+    data = request.json
+    github_username = data.get("github_username", "")
+    github_token = data.get("github_token", "")
+    
+    if not github_username or not github_token:
+        return jsonify({"valid": False, "error": "Missing username or token"}), 400
+    
+    # Verify the credentials
+    is_valid = verify_github_credentials(github_username, github_token)
+    
+    if is_valid:
+        return jsonify({"valid": True, "message": "Successfully authenticated with GitHub"})
+    else:
+        return jsonify({"valid": False, "error": "Invalid GitHub credentials"}), 401
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001, host="0.0.0.0")

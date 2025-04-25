@@ -41,7 +41,6 @@ def get_repo_content(url, auth=None):
         
         # Add authentication if provided
         if auth and len(auth) == 2:
-            import base64
             username, token = auth
             auth_header = base64.b64encode(f"{username}:{token}".encode()).decode()
             headers["Authorization"] = f"Basic {auth_header}"

@@ -97,7 +97,7 @@
                     <div class="card-body">
                         <h5 class="card-title">Analyze GitHub Repository</h5>
                         <img src="https://cdn-icons-png.flaticon.com/512/1864/1864514.png" class="cat-corner cat-top-right">
-                        <form id="repoForm" method="post" action="/workflow">
+                        <form id="repoForm">
                             <div class="mb-3">
                                 <label for="repo_url" class="form-label">GitHub Repository URL <i class="fas fa-cat" style="color: var(--cat-accent);"></i></label>
                                 <input type="url" class="form-control" id="repo_url" name="repo_url" 
@@ -351,6 +351,62 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
     
     <script>
+        // GitHub Authentication Utilities - defined early to make them available everywhere
+        // Function to get stored GitHub credentials
+        function getGitHubCredentials() {
+            return {
+                username: localStorage.getItem('github_username'),
+                token: localStorage.getItem('github_token')
+            };
+        }
+        
+        // Update all API requests to include GitHub credentials if available
+        function addAuthToRequest(requestData) {
+            const credentials = getGitHubCredentials();
+            
+            if (credentials.username && credentials.token) {
+                return {
+                    ...requestData,
+                    github_auth: {
+                        username: credentials.username,
+                        token: credentials.token
+                    }
+                };
+            }
+            
+            return requestData;
+        }
+        
+        // Check if there are stored GitHub credentials
+        function checkStoredCredentials() {
+            const storedUsername = localStorage.getItem('github_username');
+            const storedToken = localStorage.getItem('github_token');
+            
+            if (storedUsername && storedToken) {
+                // Display logged-in status
+                document.getElementById('github-username').textContent = storedUsername;
+                document.getElementById('login-status-container').classList.remove('d-none');
+                document.getElementById('github-login-form').classList.add('d-none');
+                
+                // Update login tab to show login status
+                const loginTab = document.getElementById('login-tab');
+                loginTab.innerHTML = `<i class="fas fa-user-check me-2"></i>${storedUsername}`;
+                
+                return { username: storedUsername, token: storedToken };
+            } else {
+                // Show login form
+                document.getElementById('login-status-container').classList.add('d-none');
+                document.getElementById('github-login-form').classList.remove('d-none');
+                
+                // Reset login tab text
+                const loginTab = document.getElementById('login-tab');
+                loginTab.innerHTML = `<i class="fas fa-sign-in-alt me-2"></i>GitHub Login`;
+                
+                return null;
+            }
+        }
+        
+        // Repository Analysis Form Handler
         document.getElementById('repoForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -358,24 +414,46 @@
             const goal = document.getElementById('goal').value;
             const persona = document.getElementById('persona').value;
             
+            console.log("Repository Analysis form submitted with URL:", repoUrl);
+            
             // Show loading
             document.getElementById('loading').style.display = 'block';
             document.getElementById('results').classList.add('d-none');
             
             try {
+                // Get GitHub credentials if available
+                const credentials = getGitHubCredentials();
+                
+                // Prepare the request data with GitHub authentication
+                const requestData = {
+                    repo_url: repoUrl,
+                    goal: goal,
+                    persona: persona
+                };
+                
+                // Add GitHub auth if available
+                if (credentials.username && credentials.token) {
+                    requestData.github_auth = {
+                        username: credentials.username,
+                        token: credentials.token
+                    };
+                    console.log("Adding GitHub auth to Repository Analysis request");
+                }
+                
+                console.log("Sending request to /workflow API with data:", JSON.stringify(requestData));
+                
                 const response = await fetch('/workflow', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        repo_url: repoUrl,
-                        goal: goal,
-                        persona: persona
-                    }),
+                    body: JSON.stringify(requestData),
                 });
                 
+                console.log("Received response from /workflow API:", response.status);
+                
                 const data = await response.json();
+                console.log("Response data:", data);
                 
                 if (response.ok) {
                     // Display summaries

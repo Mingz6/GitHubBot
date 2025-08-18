@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'Bot4-Q&A/**'
+      - '.github/workflows/sync-bot4-qna.yml'
     branches:
       - main
   workflow_dispatch: {}
@@ -46,10 +47,15 @@ jobs:
       - name: Add Hugging Face remote
         run: |
           cd hf-space
-          git init
+          git init -b main
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git remote add origin https://user:${HF_TOKEN}@huggingface.co/spaces/MingZ6/QABot
+          if [ -z "${HF_TOKEN}" ]; then
+            echo "HF_TOKEN is empty. Add a repository secret named HF_TOKEN with a Hugging Face write token." >&2
+            exit 1
+          fi
+          # Use the actual Hugging Face username before the token so basic auth works.
+          git remote add origin "https://MingZ6:${HF_TOKEN}@huggingface.co/spaces/MingZ6/QABot"
           git add .
           # Build a concise commit message referencing source commit
           SRC_SHA="${GITHUB_SHA::7}"
@@ -58,7 +64,6 @@ jobs:
             exit 0
           fi
           git commit -m "Sync Bot4-Q&A from repo commit ${SRC_SHA}" || echo "Nothing to commit"
-          git branch -M main
           git push origin main:main --force
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}

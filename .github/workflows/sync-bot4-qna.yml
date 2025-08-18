@@ -34,7 +34,14 @@ jobs:
         run: |
           rm -rf hf-space
           mkdir -p hf-space
-          rsync -av --delete Bot4-Q&A/ hf-space/
+          SRC_DIR="Bot4-Q&A"
+          if [ ! -d "$SRC_DIR" ]; then
+            echo "Expected source directory '$SRC_DIR' not found at $PWD" >&2
+            ls -al
+            exit 1
+          fi
+          # Quote the path because it contains an ampersand (&) which the shell would otherwise treat as a control operator.
+          rsync -av --delete "${SRC_DIR}/" hf-space/
 
       - name: Add Hugging Face remote
         run: |

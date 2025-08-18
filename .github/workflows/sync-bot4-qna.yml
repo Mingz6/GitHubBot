@@ -34,37 +34,60 @@ jobs:
       - name: Create working directory for Space
         run: |
           rm -rf hf-space
-          mkdir -p hf-space
           SRC_DIR="Bot4-Q&A"
           if [ ! -d "$SRC_DIR" ]; then
             echo "Expected source directory '$SRC_DIR' not found at $PWD" >&2
             ls -al
             exit 1
           fi
-          # Quote the path because it contains an ampersand (&) which the shell would otherwise treat as a control operator.
-          rsync -av --delete "${SRC_DIR}/" hf-space/
-
-      - name: Add Hugging Face remote
-        run: |
-          cd hf-space
-          git init -b main
-          git config user.name "github-actions"
-          git config user.email "github-actions@users.noreply.github.com"
+          echo "Preparing working copy for incremental sync..."
+          # Clone existing HF Space repo to preserve history (token masked by GitHub).
           if [ -z "${HF_TOKEN}" ]; then
             echo "HF_TOKEN is empty. Add a repository secret named HF_TOKEN with a Hugging Face write token." >&2
             exit 1
           fi
-          # Use the actual Hugging Face username before the token so basic auth works.
-          git remote add origin "https://MingZ6:${HF_TOKEN}@huggingface.co/spaces/MingZ6/QABot"
-          git add .
-          # Build a concise commit message referencing source commit
-          SRC_SHA="${GITHUB_SHA::7}"
+          git clone "https://MingZ6:${HF_TOKEN}@huggingface.co/spaces/MingZ6/QABot" hf-space || {
+            echo "Clone failed (possibly first push). Initializing new repository." >&2
+            mkdir -p hf-space
+            ( cd hf-space && git init -b main )
+          }
+          # Ensure main branch is checked out
+          cd hf-space
+          if git show-ref --verify --quiet refs/heads/main; then
+            git checkout main
+          fi
+          cd ..
+          # Rsync only changed files (and delete removed ones) into cloned repo working tree.
+          rsync -av --delete "${SRC_DIR}/" hf-space/
+          echo "Rsync complete."
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+
+      - name: Add Hugging Face remote
+        run: |
+          cd hf-space
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          # Stage changes (add removals too)
+          git add -A
           if git diff --cached --quiet; then
             echo "No changes to commit for space"
             exit 0
           fi
-          git commit -m "Sync Bot4-Q&A from repo commit ${SRC_SHA}" || echo "Nothing to commit"
-          git push origin main:main --force
+          SRC_SHA="${GITHUB_SHA::7}"
+          # Collect up to 20 changed paths for context
+          CHANGED_LIST=$(git diff --cached --name-only | head -n 20 | tr '\n' ' ')
+          FILE_COUNT=$(git diff --cached --name-only | wc -l | tr -d ' ')
+          MSG="Sync Bot4-Q&A (repo ${SRC_SHA}) - ${FILE_COUNT} file(s) updated: ${CHANGED_LIST}"
+          git commit -m "${MSG}"
+          # Ensure remote exists (already from clone; add if missing)
+          if ! git remote get-url origin >/dev/null 2>&1; then
+            git remote add origin "https://MingZ6:${HF_TOKEN}@huggingface.co/spaces/MingZ6/QABot"
+          fi
+          # Pull rebase to incorporate possible manual web edits, then push
+          git fetch origin main || true
+          git rebase origin/main || true
+          git push origin HEAD:main
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
 

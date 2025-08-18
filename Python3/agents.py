@@ -2,6 +2,7 @@ import warnings
 import os
 import json
 import requests
+import re
 
 warnings.filterwarnings("ignore")
 
@@ -19,6 +20,89 @@ except ImportError:
         # If neither works, we'll create a minimal fallback implementation
         TOGETHER_API_STYLE = "fallback"
         print("WARNING: together package not found, using fallback implementation")
+
+# Function to estimate token count - simple approximation
+def estimate_tokens(text):
+    """Estimate the number of tokens in a text string."""
+    if not text:
+        return 0
+    # Rough estimate: 1 token is about 4 characters in English
+    return len(text) // 4
+
+# Function to trim content to fit within token limit
+def trim_content_to_token_limit(content, sources, max_tokens=20000):
+    """Trim content to fit within token limit while preserving the most relevant parts."""
+    if not content:
+        return "", []
+    
+    # Convert to list if it's not already
+    if isinstance(content, str):
+        content_list = content.split('\n\n')
+    else:
+        content_list = content
+        
+    # Estimate current tokens
+    current_tokens = sum(estimate_tokens(c) for c in content_list)
+    
+    # If within limit, return as is
+    if current_tokens <= max_tokens:
+        if isinstance(content, str):
+            return content, sources
+        return '\n\n'.join(content_list), sources
+    
+    # Need to trim - prioritize content with "DIRECT MATCH" marker
+    priority_content = []
+    regular_content = []
+    
+    for item in content_list:
+        if "DIRECT MATCH" in item:
+            priority_content.append(item)
+        else:
+            regular_content.append(item)
+    
+    # Start with priority content
+    trimmed_list = priority_content.copy()
+    current_tokens = sum(estimate_tokens(c) for c in trimmed_list)
+    
+    # Add regular content until we approach the limit
+    for item in regular_content:
+        item_tokens = estimate_tokens(item)
+        if current_tokens + item_tokens <= max_tokens - 500:  # Leave some buffer
+            trimmed_list.append(item)
+            current_tokens += item_tokens
+        else:
+            break
+    
+    # If still too long, truncate some items
+    if current_tokens > max_tokens:
+        print(f"Warning: Still exceeding token limit. Further truncation needed.")
+        while trimmed_list and current_tokens > max_tokens:
+            # Remove the longest item
+            longest_idx = max(range(len(trimmed_list)), key=lambda i: len(trimmed_list[i]))
+            longest_item = trimmed_list[longest_idx]
+            
+            # If it's very long, try truncating instead of removing
+            if len(longest_item) > 1000 and "DIRECT MATCH" not in longest_item:
+                shortened = longest_item[:800] + "... (truncated)"
+                tokens_saved = estimate_tokens(longest_item) - estimate_tokens(shortened)
+                trimmed_list[longest_idx] = shortened
+                current_tokens -= tokens_saved
+            else:
+                # Remove the item
+                trimmed_list.pop(longest_idx)
+                current_tokens -= estimate_tokens(longest_item)
+    
+    # Convert back to string
+    trimmed_content = '\n\n'.join(trimmed_list)
+    print(f"Trimmed content from estimated {sum(estimate_tokens(c) for c in content_list)} tokens to {estimate_tokens(trimmed_content)} tokens")
+    
+    # Keep track of relevant sources
+    if len(trimmed_list) < len(content_list):
+        # We might need to adjust sources, but it's hard to know which sources match which content
+        # So we'll keep all sources for now
+        pass
+    
+    return trimmed_content, sources
 
 
 class TogetherAPIWrapper:
@@ -348,13 +432,33 @@ class QuestionAnswerer:
             if not content:
                 return "No relevant content found to answer this question."
                 
-            # Combine content sections and format sources
-            combined_content = "\n\n".join(content)
-            sources_text = "\n".join([f"- {url}" for url in source_urls[:3]])
+            # Trim content to stay within token limits (20K tokens max for context)
+            combined_content = content if isinstance(content, str) else "\n\n".join(content)
+            trimmed_content, limited_sources = trim_content_to_token_limit(combined_content, source_urls, max_tokens=20000)
+            
+            # Format sources text
+            sources_text = "\n".join([f"- {url}" for url in limited_sources[:3]])
+            
+            # Calculate approximate token counts for monitoring
+            question_tokens = estimate_tokens(question)
+            content_tokens = estimate_tokens(trimmed_content)
+            sources_tokens = estimate_tokens(sources_text)
+            system_tokens = estimate_tokens("You are a web research assistant. Answer the user's question based on the provided website content. Be concise, accurate, and cite your sources when possible.")
+            total_estimated = question_tokens + content_tokens + sources_tokens + system_tokens
+            
+            print(f"Token estimate - Question: {question_tokens}, Content: {content_tokens}, Sources: {sources_tokens}, Total: {total_estimated}")
+            
+            # If still potentially too long, trim more aggressively
+            if total_estimated > 25000:  # Leave buffer for the model's processing
+                print(f"Content may still be too long, trimming further...")
+                max_content_tokens = 25000 - question_tokens - sources_tokens - system_tokens - 500  # Extra buffer
+                trimmed_content = trimmed_content[:max_content_tokens * 4]  # Convert back to characters (rough estimate)
+                trimmed_content = trimmed_content + "\n\n... (content truncated to fit token limits)"
+                print(f"Aggressively trimmed content to approximately {estimate_tokens(trimmed_content)} tokens")
             
             messages = [
                 {"role": "system", "content": "You are a web research assistant. Answer the user's question based on the provided website content. Be concise, accurate, and cite your sources when possible."},
-                {"role": "user", "content": f"Question: {question}\n\nRelevant Website Content:\n{combined_content}\n\nSources:\n{sources_text}\n\nPlease answer the question based only on this information:"}
+                {"role": "user", "content": f"Question: {question}\n\nRelevant Website Content:\n{trimmed_content}\n\nSources:\n{sources_text}\n\nPlease answer the question based only on this information:"}
             ]
             
             return together_api.chat_completion(

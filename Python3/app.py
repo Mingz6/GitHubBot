@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, url_for, send_from_directory
 import requests
 from bs4 import BeautifulSoup
-from agents import SummarizerAgent, InsightAgent, RecommenderAgent, QuestionGeneratorAgent, CLISetupAgent, WebsiteContentSummarizer, QuestionAnswerer, WebsiteSummarizer
+from agents import SummarizerAgent, InsightAgent, RecommenderAgent, QuestionGeneratorAgent, CLISetupAgent, WebsiteContentSummarizer, QuestionAnswerer, WebsiteSummarizer, estimate_tokens, trim_content_to_token_limit
 from github_utils import get_repo_content, get_repo_structure, get_repo_metadata, is_github_url
 from web_utils import extract_webpage_content, extract_relevant_sections, is_valid_url, parse_knowledge_file
 from rag_utils import RAGProcessor  # Import our new RAG processor
@@ -445,12 +445,14 @@ def answer_question():
             
             if knowledge_content:
                 print(f"Found {len(knowledge_content)} relevant items in knowledge base")
-                # Format the retrieved content
+                # Format the retrieved content - use our token limiting function here
                 relevant_content = "\n\n".join(knowledge_content)
-                source_urls = knowledge_sources
+                
+                # Check token count and trim if needed
+                trimmed_content, source_urls = trim_content_to_token_limit(relevant_content, knowledge_sources)
                 
                 # Generate an answer to the question
-                answer = question_answerer.answer_question(normalized_question, relevant_content, knowledge_sources)
+                answer = question_answerer.answer_question(normalized_question, trimmed_content, source_urls)
                 
                 return jsonify({
                     "answer": answer,
@@ -583,29 +585,31 @@ def answer_question():
                     all_content = "\n\n".join(combined_content)
                     print(f"Answering with combined content: {len(all_content)} chars from {len(combined_sources)} sources")
                     
-                    # Trim content if it's too long
-                    max_content_length = 15000
-                    if len(all_content) > max_content_length:
-                        all_content = all_content[:max_content_length] + "...[content truncated]"
+                    # Use our token limiting function instead of arbitrary length limit
+                    trimmed_content, limited_sources = trim_content_to_token_limit(all_content, combined_sources)
                     
                     # Generate the answer using both the original and normalized questions for context
                     full_question = f"{question} (also looking for: {normalized_question})"
-                    answer = question_answerer.answer_question(full_question, all_content, combined_sources)
+                    answer = question_answerer.answer_question(full_question, trimmed_content, limited_sources)
                     
                     return jsonify({
                         "answer": answer,
-                        "sources": combined_sources[:5],
+                        "sources": limited_sources[:5],
                         "method": "combined_knowledge"
                     })
                 elif knowledge_content:
                     # If we have knowledge content but no website content, use just the knowledge content
                     print("Using only knowledge base content (no relevant website content found)")
                     relevant_content = "\n\n".join(knowledge_content)
-                    answer = question_answerer.answer_question(normalized_question, relevant_content, knowledge_sources)
+                    
+                    # Use token limiting function
+                    trimmed_content, limited_sources = trim_content_to_token_limit(relevant_content, knowledge_sources)
+                    
+                    answer = question_answerer.answer_question(normalized_question, trimmed_content, limited_sources)
                     
                     return jsonify({
                         "answer": answer,
-                        "sources": knowledge_sources[:5],
+                        "sources": limited_sources[:5],
                         "method": "knowledge_base_only"
                     })
                 else:
@@ -752,20 +756,17 @@ def answer_question():
                 combined_content = "\n\n".join(all_relevant_content)
                 print(f"Combined content length: {len(combined_content)}")
                 
-                # Limit content size to avoid token limits
-                max_chars = 10000
-                if len(combined_content) > max_chars:
-                    print(f"Truncating content from {len(combined_content)} to {max_chars} characters")
-                    combined_content = combined_content[:max_chars] + "... [content truncated due to length]"
+                # Use our token limiting function instead of arbitrary length limit
+                trimmed_content, limited_sources = trim_content_to_token_limit(combined_content, all_source_urls)
                     
                 # Generate an answer to the question
-                print(f"Generating answer with {len(combined_content)} chars of content from {len(all_source_urls)} sources")
+                print(f"Generating answer with {len(trimmed_content)} chars of content from {len(limited_sources)} sources")
                 full_question = f"{question} (also checking for: {normalized_question})"
-                answer = question_answerer.answer_question(full_question, combined_content, all_source_urls)
+                answer = question_answerer.answer_question(full_question, trimmed_content, limited_sources)
                 
                 return jsonify({
                     "answer": answer,
-                    "sources": all_source_urls[:5],  # Return up to 5 source URLs
+                    "sources": limited_sources[:5],  # Return up to 5 source URLs
                     "method": "combined_search"
                 })
             else:

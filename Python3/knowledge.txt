@@ -4,5 +4,3 @@ Phone number is 7809999945
 Ming is a junior developer
 Louis is a Senior developer.
 Jack is manager.
-https://www.github.com
-https://www.huggingface.com

@@ -1,10 +1,10 @@
-name: Sync Bot4-Q&A to Hugging Face Space
+name: Bot4-Q&A Sync to Hugging Face Space
 
 on:
   push:
     paths:
       - 'Bot4-Q&A/**'
-      - '.github/workflows/sync-bot4-qna.yml'
+      - '.github/workflows/Bot4-Q&A-Sync.yml'
     branches:
       - main
   workflow_dispatch: {}

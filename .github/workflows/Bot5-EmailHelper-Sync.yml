@@ -18,7 +18,7 @@ jobs:
     permissions:
       contents: read
     env:
-      HF_SPACE_NAME: EmailHelper
+      HF_SPACE_NAME: 5thEmailBot
       HF_USERNAME: MingZ6
       SRC_DIR: Bot5-EmailHelper
     steps:

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en" class="dark-mode">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toys"R"Us Canada Information System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #212529;
+            --card-bg: #ffffff;
+            --card-border: #ddd;
+            --card-header: #f8f9fa;
+            --hover-bg: #f8f9fa;
+            --primary-color: #0073e6; /* Toys"R"Us blue */
+            --muted-text: #6c757d;
+        }
+        
+        .dark-mode {
+            --bg-color: #121212;
+            --text-color: #e1e1e1;
+            --card-bg: #1e1e1e;
+            --card-border: #333;
+            --card-header: #252525;
+            --hover-bg: #2c2c2c;
+            --primary-color: #00a1ff; /* Lighter Toys"R"Us blue for dark mode */
+            --muted-text: #adb5bd;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .card {
+            margin-bottom: 20px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+        }
+        
+        .card-header {
+            background-color: var(--card-header);
+            color: var(--text-color);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .query-sample {
+            cursor: pointer;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid var(--card-border);
+            border-radius: 4px;
+            background-color: var(--card-bg);
+        }
+        
+        .query-sample:hover {
+            background-color: var(--hover-bg);
+        }
+        
+        #processingSpinner {
+            display: none;
+        }
+        
+        .section-card {
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        #stats {
+            font-size: 14px;
+            margin-top: 10px;
+            color: var(--text-color);
+        }
+        
+        /* Theme toggle */
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        
+        /* Add text wrapping for all content sections */
+        pre {
+            white-space: pre-wrap;       /* CSS3 */
+            white-space: -moz-pre-wrap;  /* Firefox */
+            white-space: -pre-wrap;      /* Opera <7 */
+            white-space: -o-pre-wrap;    /* Opera 7 */
+            word-wrap: break-word;       /* IE & Chrome */
+            overflow-wrap: break-word;
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--card-border);
+        }
+        /* Ensure all content sections wrap text properly */
+        #draftResult, #reviewResult, #policiesResult, 
+        #examplesResult, #sentimentResult, #analysisResult {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            color: var(--text-color);
+        }
+        
+        .text-muted {
+            color: var(--muted-text) !important;
+        }
+        
+        .form-control {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--card-border);
+        }
+        
+        .form-control:focus {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+        }
+        
+        .bg-primary {
+            background-color: var(--primary-color) !important;
+        }
+        
+        /* Safari specific dark mode support */
+        @media (prefers-color-scheme: dark) {
+            :root:not(.light-mode) {
+                --bg-color: #121212;
+                --text-color: #e1e1e1;
+                --card-bg: #1e1e1e;
+                --card-border: #333;
+                --card-header: #252525;
+                --hover-bg: #2c2c2c;
+                --primary-color: #00a1ff; /* Lighter Toys"R"Us blue for dark mode */
+                --muted-text: #adb5bd;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <h1 class="text-center mb-4">Toys"R"Us Canada Information System</h1>
+        
+        <!-- Theme Toggle Button -->
+        <div class="theme-toggle">
+            <button class="btn btn-sm btn-outline-secondary" id="themeToggle">
+                <span id="themeIcon">☀️</span> <span id="themeText">Light Mode</span>
+            </button>
+        </div>
+        
+        <div class="row">
+            <!-- Query Input Section -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5>Customer Query</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="emailForm">
+                            <div class="mb-3">
+                                <label for="emailContent" class="form-label">Your Question:</label>
+                                <textarea class="form-control" id="emailContent" rows="8" placeholder="Type or select a question about Toys'R'Us Canada products, services, or policies..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Get Information</button>
+                            <div class="spinner-border text-primary mt-2" role="status" id="processingSpinner">
+                                <span class="visually-hidden">Processing...</span>
+                            </div>
+                        </form>
+                        
+                        <div class="mt-3">
+                            <h6>Sample Questions:</h6>
+                            <div id="sampleEmails">
+                                {% for email in emails %}
+                                <div class="query-sample">{{ email }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Information Section -->
+            <div class="col-md-8">
+                
+                <div class="card section-card">
+                    <div class="card-header">
+                        <h5>Answer</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="draftResult">No information available yet.</div>
+                        <div class="mt-3" id="responseActions" style="display:none;">
+                            <button class="btn btn-success btn-sm" id="approveBtn">Helpful</button>
+                            <button class="btn btn-danger btn-sm" id="disapproveBtn">Not Helpful</button>
+                            <div id="stats"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card section-card">
+                    <div class="card-header">
+                        <h5>Answer Quality</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="reviewResult">No review yet.</div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Relevant Policies</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="policiesResult">No policies found.</div>
+                                <div id="policyJustification" class="mt-2 text-muted"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Similar Questions</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="examplesResult">No examples found.</div>
+                                <div id="exampleJustification" class="mt-2 text-muted"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card section-card">
+                    <div class="card-header">
+                        <h5>Customer Intent</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="sentimentResult">No analysis yet.</div>
+                    </div>
+                </div>
+                <div class="card section-card">
+                    <div class="card-header">
+                        <h5>Query Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="analysisResult">No analysis yet.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Theme handling
+            function setTheme(isDark) {
+                if (isDark) {
+                    $('html').addClass('dark-mode').removeClass('light-mode');
+                    $('#themeIcon').text('☀️');
+                    $('#themeText').text('Light Mode');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    $('html').addClass('light-mode').removeClass('dark-mode');
+                    $('#themeIcon').text('🌙');
+                    $('#themeText').text('Dark Mode');
+                    localStorage.setItem('theme', 'light');
+                }
+            }
+            
+            // Check for saved theme preference or use system preference
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                setTheme(savedTheme === 'dark');
+            } else {
+                // Use macOS system preference by default, dark mode is already set in HTML class
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    setTheme(true);
+                } else {
+                    setTheme(false);
+                }
+            }
+            
+            // Watch for system theme changes
+            if (window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                    if (!localStorage.getItem('theme')) {
+                        setTheme(e.matches);
+                    }
+                });
+            }
+            
+            // Theme toggle button
+            $('#themeToggle').click(function() {
+                const isDarkMode = $('html').hasClass('dark-mode');
+                setTheme(!isDarkMode);
+            });
+            
+            // Load initial stats
+            updateStats();
+            
+            // Handle sample query selection
+            $('.query-sample').click(function() {
+                $('#emailContent').val($(this).text());
+            });
+            
+            // Handle form submission
+            $('#emailForm').submit(function(e) {
+                e.preventDefault();
+                
+                const emailContent = $('#emailContent').val();
+                if (!emailContent) {
+                    alert('Please enter a question.');
+                    return;
+                }
+                
+                $('#processingSpinner').show();
+                
+                $.ajax({
+                    url: '/process',
+                    method: 'POST',
+                    data: { email: emailContent },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            displayResults(response);
+                            $('#responseActions').show();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                        $('#processingSpinner').hide();
+                    },
+                    error: function() {
+                        alert('Server error occurred.');
+                        $('#processingSpinner').hide();
+                    }
+                });
+            });
+            
+            // Handle approve/disapprove buttons
+            $('#approveBtn').click(function() {
+                $.post('/approve', function(data) {
+                    updateStatsFromData(data);
+                });
+            });
+            
+            $('#disapproveBtn').click(function() {
+                $.post('/disapprove', function(data) {
+                    updateStatsFromData(data);
+                });
+            });
+            
+            function displayResults(data) {
+                // Display analysis
+                $('#analysisResult').html('<pre>' + data.analysis + '</pre>');
+                
+                // Display draft
+                $('#draftResult').html('<pre>' + data.final_draft + '</pre>');
+                
+                // Display review
+                $('#reviewResult').html('<pre>' + data.review + '</pre>');
+                
+                // Display policies
+                $('#policiesResult').html('<pre>' + data.policies + '</pre>');
+                $('#policyJustification').text(data.policy_justification);
+                
+                // Display examples
+                $('#examplesResult').html('<pre>' + data.examples + '</pre>');
+                $('#exampleJustification').text(data.example_justification);
+                
+                // Display sentiment
+                $('#sentimentResult').html('<pre>' + data.sentiment + '</pre>');
+            }
+            
+            function updateStats() {
+                $.get('/stats', function(data) {
+                    updateStatsFromData(data);
+                });
+            }
+            
+            function updateStatsFromData(data) {
+                $('#stats').html('<b>Helpful:</b> ' + data.approved_count + ' | <b>Not Helpful:</b> ' + data.disapproved_count);
+            }
+        });
+    </script>
+</body>
+</html>

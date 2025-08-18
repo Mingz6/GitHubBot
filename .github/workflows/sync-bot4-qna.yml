@@ -1,0 +1,60 @@
+name: Sync Bot4-Q&A to Hugging Face Space
+
+on:
+  push:
+    paths:
+      - 'Bot4-Q&A/**'
+    branches:
+      - main
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install git-lfs
+        run: | 
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
+          git lfs install
+
+      - name: Create working directory for Space
+        run: |
+          rm -rf hf-space
+          mkdir -p hf-space
+          rsync -av --delete Bot4-Q&A/ hf-space/
+
+      - name: Add Hugging Face remote
+        run: |
+          cd hf-space
+          git init
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git remote add origin https://user:${HF_TOKEN}@huggingface.co/spaces/MingZ6/QABot
+          git add .
+          # Build a concise commit message referencing source commit
+          SRC_SHA="${GITHUB_SHA::7}"
+          if git diff --cached --quiet; then
+            echo "No changes to commit for space"
+            exit 0
+          fi
+          git commit -m "Sync Bot4-Q&A from repo commit ${SRC_SHA}" || echo "Nothing to commit"
+          git branch -M main
+          git push origin main:main --force
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+
+      - name: Done
+        run: echo "Hugging Face space sync complete."

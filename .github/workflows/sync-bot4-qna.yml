@@ -31,8 +31,9 @@ jobs:
           sudo apt-get install -y git-lfs
           git lfs install
 
-      - name: Create working directory for Space
+      - name: Prepare working copy (clone or init)
         run: |
+          set -e
           rm -rf hf-space
           SRC_DIR="Bot4-Q&A"
           if [ ! -d "$SRC_DIR" ]; then
@@ -40,54 +41,56 @@ jobs:
             ls -al
             exit 1
           fi
-          echo "Preparing working copy for incremental sync..."
-          # Clone existing HF Space repo to preserve history (token masked by GitHub).
           if [ -z "${HF_TOKEN}" ]; then
             echo "HF_TOKEN is empty. Add a repository secret named HF_TOKEN with a Hugging Face write token." >&2
             exit 1
           fi
-          git clone "https://MingZ6:${HF_TOKEN}@huggingface.co/spaces/MingZ6/QABot" hf-space || {
-            echo "Clone failed (possibly first push). Initializing new repository." >&2
+          echo "Cloning existing Hugging Face Space (if it exists)..."
+          if git clone --depth 50 "https://MingZ6:${HF_TOKEN}@huggingface.co/spaces/MingZ6/QABot" hf-space; then
+            echo "Clone succeeded.";
+          else
+            echo "Clone failed (likely first deployment). Initializing new repo." >&2
             mkdir -p hf-space
             ( cd hf-space && git init -b main )
-          }
-          # Ensure main branch is checked out
-          cd hf-space
-          if git show-ref --verify --quiet refs/heads/main; then
-            git checkout main
           fi
-          cd ..
-          # Rsync only changed files (and delete removed ones) into cloned repo working tree.
-          rsync -av --delete "${SRC_DIR}/" hf-space/
+          # Rsync into working copy root, excluding VCS metadata
+          rsync -av --delete --exclude .git "${SRC_DIR}/" hf-space/
           echo "Rsync complete."
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
 
-      - name: Add Hugging Face remote
+      - name: Commit & push changes
+        working-directory: hf-space
         run: |
-          cd hf-space
+          set -e
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          # Stage changes (add removals too)
+          # Validate/repair remote
+          if git remote get-url origin >/dev/null 2>&1; then
+            if ! git remote get-url origin | grep -q 'huggingface.co/spaces/MingZ6/QABot'; then
+              git remote set-url origin "https://MingZ6:${HF_TOKEN}@huggingface.co/spaces/MingZ6/QABot"
+            fi
+          else
+            git remote add origin "https://MingZ6:${HF_TOKEN}@huggingface.co/spaces/MingZ6/QABot"
+          fi
+          # Ensure on main
+          git checkout -B main || true
+          # Incorporate remote changes if any
+          git fetch origin main || true
+          git reset --soft HEAD || true
+          git pull --rebase origin main || true
+          # Stage modifications
           git add -A
           if git diff --cached --quiet; then
             echo "No changes to commit for space"
             exit 0
           fi
           SRC_SHA="${GITHUB_SHA::7}"
-          # Collect up to 20 changed paths for context
           CHANGED_LIST=$(git diff --cached --name-only | head -n 20 | tr '\n' ' ')
           FILE_COUNT=$(git diff --cached --name-only | wc -l | tr -d ' ')
-          MSG="Sync Bot4-Q&A (repo ${SRC_SHA}) - ${FILE_COUNT} file(s) updated: ${CHANGED_LIST}"
+          MSG="Sync Bot4-Q&A (repo ${SRC_SHA}) - ${FILE_COUNT} file(s): ${CHANGED_LIST}"
           git commit -m "${MSG}"
-          # Ensure remote exists (already from clone; add if missing)
-          if ! git remote get-url origin >/dev/null 2>&1; then
-            git remote add origin "https://MingZ6:${HF_TOKEN}@huggingface.co/spaces/MingZ6/QABot"
-          fi
-          # Pull rebase to incorporate possible manual web edits, then push
-          git fetch origin main || true
-          git rebase origin/main || true
-          git push origin HEAD:main
+          git push origin main
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
 

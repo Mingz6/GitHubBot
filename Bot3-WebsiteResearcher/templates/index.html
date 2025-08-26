@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paw-fect Website Researcher</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('serve_template_file', filename='dog_style.css') }}">
+</head>
+<body class="dog-cursor">
+    <div class="container">
+        <h1 class="mb-4">Paw-fect Website Researcher</h1>
+        
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Analyze Website & Answer Questions</h5>
+                <img src="https://cdn-icons-png.flaticon.com/512/616/616408.png" class="dog-corner dog-top-right">
+                <form id="websiteForm">
+                    <div class="mb-3">
+                        <label for="website_url" class="form-label">Website URL <i class="fas fa-dog" style="color: var(--dog-accent);"></i></label>
+                        <input type="url" class="form-control" id="website_url" name="website_url" 
+                               placeholder="https://example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="max_pages">Maximum Pages to Crawl:</label>
+                        <input type="number" class="form-control" id="max_pages" name="max_pages" min="1" max="50" value="10">
+                        <small class="form-text text-muted">Enter the maximum number of pages to crawl (1-50).</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i> Fetch Website
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div id="websiteInfo" class="card mb-4 d-none">
+            <div class="card-body">
+                <h5 class="card-title">Website Overview</h5>
+                <img src="https://cdn-icons-png.flaticon.com/512/1998/1998627.png" class="dog-corner dog-top-right">
+                <div id="websiteOverview" class="mb-3"></div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <span id="pageCountInfo"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="questionSection" class="card mb-4 d-none">
+            <div class="card-body">
+                <h5 class="card-title">Ask Me Anything About This Website</h5>
+                <img src="https://cdn-icons-png.flaticon.com/512/2171/2171991.png" class="dog-corner dog-top-right">
+                <form id="questionForm">
+                    <div class="mb-3">
+                        <label for="question" class="form-label">Your Question <i class="fas fa-question-circle" style="color: var(--dog-primary);"></i></label>
+                        <input type="text" class="form-control" id="question" name="question" 
+                               placeholder="What is this website about?" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i> Fetch Answer
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <img src="https://media.giphy.com/media/3o7TKBXrEjoiA9vJzW/giphy.gif" alt="Dog loading animation">
+            <p id="loadingMessage">Our dog experts are digging through the website...</p>
+        </div>
+        
+        <div id="answerSection" class="card mb-4 d-none">
+            <div class="card-body">
+                <h5 class="card-title">Your Answer</h5>
+                <img src="https://cdn-icons-png.flaticon.com/512/2171/2171988.png" class="dog-corner dog-top-right">
+                <div id="answer" class="mb-3"></div>
+                <div id="sources" class="small text-muted"></div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-3">
+            <button id="clearBtn" class="btn btn-outline-secondary d-none">
+                <i class="fas fa-broom me-2"></i> Start New Research
+            </button>
+        </div>
+        
+        <footer class="text-center mt-5">
+            <p>Created with <i class="fas fa-heart"></i> by the Coding Dogs Team🐶</p>
+            <div>
+                <i class="fas fa-dog me-2"></i>
+                <i class="fas fa-bone me-2"></i>
+                <i class="fas fa-dog me-2"></i>
+                <i class="fas fa-bone me-2"></i>
+                <i class="fas fa-dog"></i>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Current website URL
+        let currentWebsiteUrl = '';
+        
+        // Website form submission
+        document.getElementById('websiteForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const websiteUrl = document.getElementById('website_url').value;
+            if (!websiteUrl) return;
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loadingMessage').textContent = 'Our dog experts are digging through the website...';
+            
+            // Hide any previous results
+            document.getElementById('websiteInfo').classList.add('d-none');
+            document.getElementById('questionSection').classList.add('d-none');
+            document.getElementById('answerSection').classList.add('d-none');
+            
+            try {
+                const response = await fetch('/extract_website', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        website_url: websiteUrl
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Update current website URL
+                    currentWebsiteUrl = websiteUrl;
+                    
+                    // Display website overview
+                    document.getElementById('websiteOverview').innerHTML = `<p>${data.overview}</p>`;
+                    document.getElementById('pageCountInfo').textContent = `Successfully fetched ${data.page_count} pages from this website`;
+                    
+                    // Show website info and question section
+                    document.getElementById('websiteInfo').classList.remove('d-none');
+                    document.getElementById('questionSection').classList.remove('d-none');
+                    document.getElementById('clearBtn').classList.remove('d-none');
+                    
+                    // Scroll to question section
+                    document.getElementById('questionSection').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to analyze website'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            } finally {
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+        
+        // Question form submission
+        document.getElementById('questionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const question = document.getElementById('question').value;
+            if (!question || !currentWebsiteUrl) return;
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loadingMessage').textContent = 'Sniffing for your answer...';
+            
+            // Hide any previous results
+            document.getElementById('answerSection').classList.add('d-none');
+            
+            try {
+                const response = await fetch('/answer_question', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        website_url: currentWebsiteUrl,
+                        question: question
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Display answer
+                    document.getElementById('answer').innerHTML = `<p>${data.answer}</p>`;
+                    
+                    // Display sources if available
+                    const sourcesDiv = document.getElementById('sources');
+                    if (data.sources && data.sources.length > 0) {
+                        sourcesDiv.innerHTML = '<strong>Sources:</strong><ul class="mb-0">' + 
+                            data.sources.map(url => `<li><a href="${url}" target="_blank">${url}</a></li>`).join('') +
+                            '</ul>';
+                    } else {
+                        sourcesDiv.innerHTML = '';
+                    }
+                    
+                    // Show answer section
+                    document.getElementById('answerSection').classList.remove('d-none');
+                    
+                    // Scroll to answer section
+                    document.getElementById('answerSection').scrollIntoView({ behavior: 'smooth' });
+                    
+                    // Add a dog emoji to the answer
+                    const randomDogEmojis = ['🐶', '🐕', '🦮', '🐕‍🦺', '🐩', '🦴', '🐾', '🦝', '🐺', '🦊'];
+                    const randomEmoji = randomDogEmojis[Math.floor(Math.random() * randomDogEmojis.length)];
+                    const emojiSpan = document.createElement('span');
+                    emojiSpan.style.position = 'absolute';
+                    emojiSpan.style.bottom = '10px';
+                    emojiSpan.style.right = '10px';
+                    emojiSpan.style.fontSize = '24px';
+                    emojiSpan.textContent = randomEmoji;
+                    document.querySelector('#answerSection .card-body').appendChild(emojiSpan);
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to answer question'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            } finally {
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+        
+        // Clear button handler
+        document.getElementById('clearBtn').addEventListener('click', async function() {
+            // Reset forms
+            document.getElementById('websiteForm').reset();
+            document.getElementById('questionForm').reset();
+            
+            // Hide sections
+            document.getElementById('websiteInfo').classList.add('d-none');
+            document.getElementById('questionSection').classList.add('d-none');
+            document.getElementById('answerSection').classList.add('d-none');
+            document.getElementById('clearBtn').classList.add('d-none');
+            
+            // Clear current website
+            currentWebsiteUrl = '';
+            
+            // Clear server cache
+            try {
+                await fetch('/clear_cache', { method: 'POST' });
+            } catch (error) {
+                console.error('Error clearing cache:', error);
+            }
+        });
+        
+        // Add dog cursor effect
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create a small dog that follows the mouse
+            const dog = document.createElement('div');
+            dog.innerHTML = '🐕';
+            dog.style.position = 'fixed';
+            dog.style.zIndex = '1000';
+            dog.style.fontSize = '24px';
+            dog.style.pointerEvents = 'none';
+            dog.style.transition = 'transform 0.2s ease-out';
+            document.body.appendChild(dog);
+            
+            let lastMouseX = 0;
+            let lastMouseY = 0;
+            
+            document.addEventListener('mousemove', function(e) {
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                
+                // Position the dog slightly behind the cursor
+                dog.style.left = (lastMouseX - 30) + 'px';
+                dog.style.top = (lastMouseY - 10) + 'px';
+                
+                // Flip the dog if moving left
+                if (e.movementX < 0) {
+                    dog.style.transform = 'scaleX(-1)';
+                } else if (e.movementX > 0) {
+                    dog.style.transform = 'scaleX(1)';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

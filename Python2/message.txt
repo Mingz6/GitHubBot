@@ -1,1 +1,0 @@
-Create a flask app with templates/index.html using GitHub repository analysis. The app should allow users to input GitHub repository URLs and analyze repository content, structure, and provide insights and recommendations.

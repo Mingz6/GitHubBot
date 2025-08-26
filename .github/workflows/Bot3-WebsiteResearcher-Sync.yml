@@ -1,0 +1,94 @@
+name: Bot3-WebsiteResearcher Sync to Hugging Face Space
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Bot3-WebsiteResearcher/**'
+      - '.github/workflows/Bot3-WebsiteResearcher-Sync.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: Bot3-WebsiteResearcher-Sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      HF_SPACE_NAME: 3rdRAG
+      HF_USERNAME: MingZ6
+      SRC_DIR: Bot3-WebsiteResearcher
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify source directory
+        run: |
+          if [ ! -d "$SRC_DIR" ]; then
+            echo "Source directory '$SRC_DIR' not found." >&2
+            exit 1
+          fi
+          echo "Found source directory: $SRC_DIR"
+
+      - name: Prepare working copy (clone or init)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -e
+          rm -rf hf-space
+          if [ -z "${HF_TOKEN}" ]; then
+            echo "HF_TOKEN secret missing. Add it in repo Settings > Secrets and variables > Actions." >&2
+            exit 1
+          fi
+          SPACE_URL="https://$HF_USERNAME:${HF_TOKEN}@huggingface.co/spaces/$HF_USERNAME/$HF_SPACE_NAME"
+          echo "Cloning Hugging Face Space $HF_USERNAME/$HF_SPACE_NAME (if exists)..."
+          if git clone --depth 50 "$SPACE_URL" hf-space; then
+            echo "Clone succeeded.";
+          else
+            echo "Clone failed (likely first deployment). Initializing new repo." >&2
+            mkdir -p hf-space
+            ( cd hf-space && git init -b main )
+          fi
+          echo "Rsync source into working copy (preserving history)."
+          rsync -av --delete --exclude .git "$SRC_DIR/" hf-space/
+
+      - name: Commit & push changes
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        working-directory: hf-space
+        run: |
+          set -e
+          SPACE_URL="https://$HF_USERNAME:${HF_TOKEN}@huggingface.co/spaces/$HF_USERNAME/$HF_SPACE_NAME"
+          if git remote get-url origin >/dev/null 2>&1; then
+            if ! git remote get-url origin | grep -q "huggingface.co/spaces/$HF_USERNAME/$HF_SPACE_NAME"; then
+              git remote set-url origin "$SPACE_URL"
+            fi
+          else
+            git remote add origin "$SPACE_URL"
+          fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git checkout -B main || true
+          git fetch origin main || true
+          git pull --rebase origin main || true
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit for space"
+            exit 0
+          fi
+          SRC_SHA="${GITHUB_SHA::7}"
+          CHANGED_LIST=$(git diff --cached --name-only | head -n 15 | tr '\n' ' ')
+          FILE_COUNT=$(git diff --cached --name-only | wc -l | tr -d ' ')
+          MSG="Sync Bot3-WebsiteResearcher (repo ${SRC_SHA}) - ${FILE_COUNT} file(s): ${CHANGED_LIST}"
+          git commit -m "${MSG}"
+          git push origin main
+          echo "Pushed updates to Hugging Face Space $HF_USERNAME/$HF_SPACE_NAME"
+
+      - name: Summary
+        run: |
+          echo "Deployment complete for $HF_USERNAME/$HF_SPACE_NAME"

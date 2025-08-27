@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purr-fect Code Analyzer 1</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('serve_template_file', filename='cat_style.css') }}">
+</head>
+<body class="cat-cursor">
+    <div class="container">
+        <h1 class="mb-4">Purr-fect Code Analyzer</h1>
+        
+        <!-- Navigation tabs -->
+        <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="agent-tab" data-bs-toggle="tab" data-bs-target="#agent-panel" type="button" role="tab" aria-controls="agent-panel" aria-selected="true">
+                    <i class="fas fa-cat me-2"></i>Repository Agent
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="repo-tab" data-bs-toggle="tab" data-bs-target="#repo-panel" type="button" role="tab" aria-controls="repo-panel" aria-selected="false">
+                    <i class="fas fa-code-branch me-2"></i>Repository Analysis
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="pr-tab" data-bs-toggle="tab" data-bs-target="#pr-panel" type="button" role="tab" aria-controls="pr-panel" aria-selected="false">
+                    <i class="fas fa-code-pull-request me-2"></i>PR Review
+                </button>
+            </li>
+            <li class="nav-item ms-auto" role="presentation">
+                <button class="nav-link" id="login-tab" data-bs-toggle="tab" data-bs-target="#login-panel" type="button" role="tab" aria-controls="login-panel" aria-selected="false">
+                    <i class="fas fa-sign-in-alt me-2"></i>GitHub Login
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Tab content -->
+        <div class="tab-content" id="mainTabsContent">
+            <!-- Repository Agent Tab (New default tab) -->
+            <div class="tab-pane fade show active" id="agent-panel" role="tabpanel" aria-labelledby="agent-tab">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Connect to GitHub Repository</h5>
+                        <img src="https://cdn-icons-png.flaticon.com/512/1864/1864514.png" class="cat-corner cat-top-right">
+                        <form id="agentRepoForm">
+                            <div class="mb-3">
+                                <label for="agent_repo_url" class="form-label">GitHub Repository URL <i class="fas fa-cat" style="color: var(--cat-accent);"></i></label>
+                                <input type="url" class="form-control" id="agent_repo_url" name="agent_repo_url" 
+                                       placeholder="https://github.com/username/repository" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plug me-2"></i> Connect to Repository
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div id="agent-loading" class="loading">
+                    <img src="https://media.giphy.com/media/VbnUQpnihPSIgIXuZv/giphy.gif" alt="Cat loading animation">
+                    <p>Connecting to repository... Our cat agent is preparing for communication!</p>
+                </div>
+                
+                <div id="agent-interface" class="d-none">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Chat with Repo Cat</h5>
+                            <img src="https://cdn-icons-png.flaticon.com/512/1864/1864654.png" class="cat-corner cat-top-right">
+                            <p class="card-text">Ask any question about this repository and get immediate answers!</p>
+                            
+                            <div id="chat-container" class="d-flex flex-column">
+                                <div id="chat-messages" class="chat-messages mb-3 flex-grow-1"></div>
+                                
+                                <div class="chat-input-container d-flex mt-auto">
+                                    <input type="text" id="chat-input" class="form-control me-2" 
+                                        placeholder="Ask about setup, functionality, or code structure...">
+                                    <button id="chat-submit" class="btn btn-primary">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                                <div id="chat-loading" class="chat-loading mt-2 d-none">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <span class="ms-2">Repo Cat is thinking...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Repository Analysis Tab (No longer default) -->
+            <div class="tab-pane fade" id="repo-panel" role="tabpanel" aria-labelledby="repo-tab">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Analyze GitHub Repository</h5>
+                        <img src="https://cdn-icons-png.flaticon.com/512/1864/1864514.png" class="cat-corner cat-top-right">
+                        <form id="repoForm">
+                            <div class="mb-3">
+                                <label for="repo_url" class="form-label">GitHub Repository URL <i class="fas fa-cat" style="color: var(--cat-accent);"></i></label>
+                                <input type="url" class="form-control" id="repo_url" name="repo_url" 
+                                       placeholder="https://github.com/username/repository" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="goal" class="form-label">Your Goal <i class="fas fa-fish" style="color: var(--cat-primary);"></i></label>
+                                <input type="text" class="form-control" id="goal" name="goal" 
+                                       placeholder="Understand the codebase" value="Understand the codebase">
+                            </div>
+                            <div class="mb-3">
+                                <label for="persona" class="form-label">Your Purr-sona <i class="fas fa-paw" style="color: var(--cat-accent);"></i></label>
+                                <select class="form-select" id="persona" name="persona">
+                                    <option value="Developer">Developer Cat</option>
+                                    <option value="Project Manager">Project Manager Cat</option>
+                                    <option value="Student">Student Kitten</option>
+                                    <option value="Researcher">Researcher Cat</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-cat me-2"></i> Analyze Re-paw-sitory
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div id="loading" class="loading">
+                    <img src="https://media.giphy.com/media/LmNwrBhejkK9EFP504/giphy.gif" alt="Cat typing animation">
+                    <p>Analyzing repository... Our cat experts are pawing through the code!</p>
+                </div>
+                
+                <div id="results" class="d-none">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Re-paw-sitory Summaries</h5>
+                            <img src="https://cdn-icons-png.flaticon.com/512/1864/1864612.png" class="cat-corner cat-top-right">
+                            <div id="summaries"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- New card for CLI setup instructions -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Purr-fect Setup Instructions</h5>
+                            <img src="https://cdn-icons-png.flaticon.com/512/1864/1864503.png" class="cat-corner cat-top-right">
+                            <div id="cliSetup" class="cli-setup"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Key In-sights</h5>
+                            <img src="https://cdn-icons-png.flaticon.com/512/1864/1864493.png" class="cat-corner cat-top-right">
+                            <div id="insights"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Meow-commendations</h5>
+                            <img src="https://cdn-icons-png.flaticon.com/512/1864/1864475.png" class="cat-corner cat-top-right">
+                            <div id="recommendations"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Next Expurr-loration Area</h5>
+                            <img src="https://cdn-icons-png.flaticon.com/512/1864/1864470.png" class="cat-corner cat-top-right">
+                            <div id="nextArea"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Quiz Questions (Cat-egories)</h5>
+                            <img src="https://cdn-icons-png.flaticon.com/512/1864/1864504.png" class="cat-corner cat-top-right">
+                            <div id="questions"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PR Review Tab -->
+            <div class="tab-pane fade" id="pr-panel" role="tabpanel" aria-labelledby="pr-tab">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Review GitHub Pull Request</h5>
+                        <img src="https://cdn-icons-png.flaticon.com/512/1864/1864490.png" class="cat-corner cat-top-right">
+                        <form id="prForm">
+                            <div class="mb-3">
+                                <label for="pr_url" class="form-label">GitHub Pull Request URL <i class="fas fa-code-branch" style="color: var(--cat-accent);"></i></label>
+                                <input type="url" class="form-control" id="pr_url" name="pr_url" 
+                                       placeholder="https://github.com/username/repository/pull/123" required>
+                                <div class="form-text">Enter the URL of a GitHub PR you want to review</div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="max_files" class="form-label">Maximum Files to Analyze <i class="fas fa-file-code" style="color: var(--cat-primary);"></i></label>
+                                    <select class="form-select" id="max_files" name="max_files">
+                                        <option value="10" selected>10 files</option>
+                                        <option value="25" >25 files</option>
+                                        <option value="50">50 files</option>
+                                        <option value="100">100 files</option>
+                                    </select>
+                                    <div class="form-text">Large PRs may take longer to analyze</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="file_type_filter" class="form-label">Filter by File Type <i class="fas fa-filter" style="color: var(--cat-accent);"></i></label>
+                                    <select class="form-select" id="file_type_filter" name="file_type_filter">
+                                        <option value="all" selected>All Code Files</option>
+                                        <option value="python">Python (.py)</option>
+                                        <option value="javascript">JavaScript (.js, .jsx, .ts, .tsx)</option>
+                                        <option value="web">Web (HTML, CSS)</option>
+                                        <option value="data">Data Files (JSON, YAML, SQL)</option>
+                                        <option value="docs">Documentation (MD, TXT)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paw me-2"></i> Fur-fect Code Review
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div id="pr-loading" class="loading">
+                    <img src="https://media.giphy.com/media/mlvseq9yvZhba/giphy.gif" alt="Cat reviewing code animation">
+                    <p>Reviewing PR... Our senior developer cat is analyzing your code changes!</p>
+                </div>
+                
+                <div id="pr-results" class="d-none">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Pull Request Overview</h5>
+                            <img src="https://cdn-icons-png.flaticon.com/512/1864/1864521.png" class="cat-corner cat-top-right">
+                            <div id="pr-overview">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <h6 id="pr-title"></h6>
+                                        <p class="text-muted mb-0">Created by <span id="pr-user"></span></p>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-primary rounded-pill" id="pr-files-count"></span>
+                                        <span class="badge bg-info rounded-pill" id="pr-total-files"></span>
+                                    </div>
+                                </div>
+                                <div class="d-flex mt-2">
+                                    <div class="badge bg-secondary me-2">Target: <span id="pr-target"></span></div>
+                                    <div class="badge bg-info me-2">Source: <span id="pr-source"></span></div>
+                                </div>
+                                <div class="alert alert-warning mt-3" id="pr-file-limit-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <span id="pr-file-limit-message"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Files Analyzed</h5>
+                            <img src="https://cdn-icons-png.flaticon.com/512/1864/1864464.png" class="cat-corner cat-top-right">
+                            <div id="pr-files-analyzed"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Senior Developer Review</h5>
+                            <img src="https://cdn-icons-png.flaticon.com/512/1864/1864464.png" class="cat-corner cat-top-right">
+                            <div id="pr-review" class="review-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- GitHub Login Tab -->
+            <div class="tab-pane fade" id="login-panel" role="tabpanel" aria-labelledby="login-tab">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">GitHub Authentication</h5>
+                        <img src="https://cdn-icons-png.flaticon.com/512/1864/1864509.png" class="cat-corner cat-top-right">
+                        
+                        <div id="login-status-container" class="mb-4 d-none">
+                            <div class="alert alert-success" id="login-success">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <span>You are logged in to GitHub as <strong id="github-username">username</strong></span>
+                            </div>
+                            <button id="logout-button" class="btn btn-outline-secondary">
+                                <i class="fas fa-sign-out-alt me-2"></i> Logout from GitHub
+                            </button>
+                        </div>
+                        
+                        <form id="github-login-form">
+                            <div class="mb-3">
+                                <label for="github_username" class="form-label">GitHub Username <i class="fas fa-user" style="color: var(--cat-accent);"></i></label>
+                                <input type="text" class="form-control" id="github_username" name="github_username" 
+                                       placeholder="Your GitHub username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="github_token" class="form-label">Personal Access Token <i class="fas fa-key" style="color: var(--cat-primary);"></i></label>
+                                <input type="password" class="form-control" id="github_token" name="github_token" 
+                                       placeholder="Your GitHub personal access token" required>
+                                <div class="form-text">
+                                    We recommend using a <a href="https://github.com/settings/tokens" target="_blank">personal access token</a> with 'repo' scope.
+                                    <br>Your credentials are only stored in your browser's local storage and are never sent to our servers.
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt me-2"></i> Connect to GitHub
+                            </button>
+                        </form>
+                        
+                        <div class="mt-4">
+                            <h6 class="mb-3"><i class="fas fa-info-circle me-2" style="color: var(--cat-accent);"></i>How to create a Personal Access Token:</h6>
+                            <ol>
+                                <li>Go to your GitHub <a href="https://github.com/settings/tokens" target="_blank">Personal Access Tokens</a> page</li>
+                                <li>Click "Generate new token" (classic)</li>
+                                <li>Give it a name (e.g., "Purr-fect Code Analyzer")</li>
+                                <li>Select the <strong>repo</strong> scope to access private repositories</li>
+                                <li>Click "Generate token" and copy the token value</li>
+                                <li>Paste the token in the field above</li>
+                            </ol>
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                For security, tokens are only shown once when created. If you lose it, you'll need to generate a new one.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="text-center mt-5">
+            <p>Created with <i class="fas fa-heart"></i> by the Coding Cats Team</p>
+            <div>
+                <i class="fas fa-cat me-2"></i>
+                <i class="fas fa-paw me-2"></i>
+                <i class="fas fa-cat me-2"></i>
+                <i class="fas fa-paw me-2"></i>
+                <i class="fas fa-cat"></i>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Add Bootstrap JS and needed dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+    
+    <script>
+        // GitHub Authentication Utilities - defined early to make them available everywhere
+        // Function to get stored GitHub credentials
+        function getGitHubCredentials() {
+            return {
+                username: localStorage.getItem('github_username'),
+                token: localStorage.getItem('github_token')
+            };
+        }
+        
+        // Update all API requests to include GitHub credentials if available
+        function addAuthToRequest(requestData) {
+            const credentials = getGitHubCredentials();
+            
+            if (credentials.username && credentials.token) {
+                return {
+                    ...requestData,
+                    github_auth: {
+                        username: credentials.username,
+                        token: credentials.token
+                    }
+                };
+            }
+            
+            return requestData;
+        }
+        
+        // Check if there are stored GitHub credentials
+        function checkStoredCredentials() {
+            const storedUsername = localStorage.getItem('github_username');
+            const storedToken = localStorage.getItem('github_token');
+            
+            if (storedUsername && storedToken) {
+                // Display logged-in status
+                document.getElementById('github-username').textContent = storedUsername;
+                document.getElementById('login-status-container').classList.remove('d-none');
+                document.getElementById('github-login-form').classList.add('d-none');
+                
+                // Update login tab to show login status
+                const loginTab = document.getElementById('login-tab');
+                loginTab.innerHTML = `<i class="fas fa-user-check me-2"></i>${storedUsername}`;
+                
+                return { username: storedUsername, token: storedToken };
+            } else {
+                // Show login form
+                document.getElementById('login-status-container').classList.add('d-none');
+                document.getElementById('github-login-form').classList.remove('d-none');
+                
+                // Reset login tab text
+                const loginTab = document.getElementById('login-tab');
+                loginTab.innerHTML = `<i class="fas fa-sign-in-alt me-2"></i>GitHub Login`;
+                
+                return null;
+            }
+        }
+        
+        // Repository Analysis Form Handler
+        document.getElementById('repoForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const repoUrl = document.getElementById('repo_url').value;
+            const goal = document.getElementById('goal').value;
+            const persona = document.getElementById('persona').value;
+            
+            console.log("Repository Analysis form submitted with URL:", repoUrl);
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').classList.add('d-none');
+            
+            try {
+                // Get GitHub credentials if available
+                const credentials = getGitHubCredentials();
+                
+                // Prepare the request data with GitHub authentication
+                const requestData = {
+                    repo_url: repoUrl,
+                    goal: goal,
+                    persona: persona
+                };
+                
+                // Add GitHub auth if available
+                if (credentials.username && credentials.token) {
+                    requestData.github_auth = {
+                        username: credentials.username,
+                        token: credentials.token
+                    };
+                    console.log("Adding GitHub auth to Repository Analysis request");
+                }
+                
+                console.log("Sending request to /workflow API with data:", JSON.stringify(requestData));
+                
+                const response = await fetch('/workflow', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData),
+                });
+                
+                console.log("Received response from /workflow API:", response.status);
+                
+                const data = await response.json();
+                console.log("Response data:", data);
+                
+                if (response.ok) {
+                    // Display summaries
+                    const summariesDiv = document.getElementById('summaries');
+                    summariesDiv.innerHTML = '';
+                    
+                    Object.entries(data.summaries).forEach(([filename, summary]) => {
+                        summariesDiv.innerHTML += `
+                            <div class="mb-3">
+                                <h6><i class="fas fa-file-code me-2" style="color: var(--cat-primary);"></i>${filename}</h6>
+                                <p>${summary}</p>
+                            </div>
+                        `;
+                    });
+                    
+                    // Display CLI setup instructions
+                    const setupDiv = document.getElementById('cliSetup');
+                    if (data.cli_setup && data.cli_setup.trim().length > 0) {
+                        setupDiv.innerHTML = `<pre class="cli-instructions">${data.cli_setup}</pre>`;
+                    } else {
+                        setupDiv.innerHTML = `<p class="text-muted">No setup instructions available for this repository.</p>`;
+                    }
+                    
+                    // Display insights
+                    document.getElementById('insights').innerHTML = `<ul class="paw-list">${data.insights.split('\n').map(insight => 
+                        `<li>${insight}</li>`).join('')}</ul>`;
+                    
+                    // Display recommendations
+                    document.getElementById('recommendations').innerHTML = `<ul class="paw-list">${data.recommendations.split('\n').map(rec => 
+                        `<li>${rec}</li>`).join('')}</ul>`;
+                    
+                    // Display next area
+                    document.getElementById('nextArea').innerHTML = `<p><i class="fas fa-map-marker-alt me-2" style="color: var(--cat-primary);"></i>${data.next_area}</p>`;
+                    
+                    // Display questions
+                    document.getElementById('questions').innerHTML = `<pre>${data.questions}</pre>`;
+                    
+                    // Show results
+                    document.getElementById('results').classList.remove('d-none');
+                    
+                    // Scroll to results
+                    document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+                    
+                    // Add a cat emoji to the end of each section
+                    const randomCatEmojis = ['🐱', '😸', '😹', '😻', '😽', '🙀', '😿', '😾', '🐈', '🐾'];
+                    document.querySelectorAll('#results .card').forEach(card => {
+                        const randomEmoji = randomCatEmojis[Math.floor(Math.random() * randomCatEmojis.length)];
+                        const cardBody = card.querySelector('.card-body');
+                        const emojiSpan = document.createElement('span');
+                        emojiSpan.style.position = 'absolute';
+                        emojiSpan.style.bottom = '10px';
+                        emojiSpan.style.right = '10px';
+                        emojiSpan.style.fontSize = '24px';
+                        emojiSpan.textContent = randomEmoji;
+                        cardBody.appendChild(emojiSpan);
+                    });
+                    
+                    // Store repository data for chat functionality
+                    if (window.updateRepoData) {
+                        window.updateRepoData(data);
+                    }
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to analyze repository'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            } finally {
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+        
+        // Add some cat fun
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create a small cat that follows the mouse
+            const cat = document.createElement('div');
+            cat.innerHTML = '🐈';
+            cat.style.position = 'fixed';
+            cat.style.zIndex = '1000';
+            cat.style.fontSize = '24px';
+            cat.style.pointerEvents = 'none';
+            cat.style.transition = 'transform 0.2s ease-out';
+            document.body.appendChild(cat);
+            
+            let lastMouseX = 0;
+            let lastMouseY = 0;
+            
+            document.addEventListener('mousemove', function(e) {
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                
+                // Position the cat slightly behind the cursor
+                cat.style.left = (lastMouseX - 30) + 'px';
+                cat.style.top = (lastMouseY - 10) + 'px';
+                
+                // Flip the cat if moving left
+                if (e.movementX < 0) {
+                    cat.style.transform = 'scaleX(-1)';
+                } else if (e.movementX > 0) {
+                    cat.style.transform = 'scaleX(1)';
+                }
+            });
+            
+            // Handle the Repository Agent form submission
+            const agentRepoForm = document.getElementById('agentRepoForm');
+            const agentLoading = document.getElementById('agent-loading');
+            const agentInterface = document.getElementById('agent-interface');
+            
+            // Update the agentRepoForm to include GitHub auth
+            agentRepoForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const repoUrl = document.getElementById('agent_repo_url').value;
+                
+                if (!repoUrl) {
+                    alert('Please enter a valid GitHub repository URL');
+                    return;
+                }
+                
+                // Show loading
+                agentLoading.style.display = 'block';
+                agentInterface.classList.add('d-none');
+                
+                try {
+                    // Get GitHub credentials if available
+                    const requestData = {
+                        repo_url: repoUrl,
+                        goal: "Chat with repository agent",
+                        persona: "Developer"
+                    };
+                    
+                    // Add GitHub auth if available
+                    const authData = addAuthToRequest(requestData);
+                    
+                    // Fetch repository data
+                    const response = await fetch('/workflow', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(authData),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        // Store repository data for chat functionality
+                        repoData = {
+                            url: repoUrl,
+                            content: data.repo_content || {},
+                            metadata: data.repo_metadata || {},
+                            summaries: data.summaries || {},
+                            insights: data.insights || ''
+                        };
+                        
+                        // Show the chat interface
+                        agentInterface.classList.remove('d-none');
+                        
+                        // Scroll to chat interface
+                        agentInterface.scrollIntoView({ behavior: 'smooth' });
+                        
+                        // Clear any previous messages
+                        if (chatMessages) {
+                            chatMessages.innerHTML = '';
+                        }
+                        
+                        // Add a welcome message
+                        setTimeout(() => {
+                            addMessage(`😺 Meow! I'm connected to ${data.repo_metadata.name || 'your repository'}. Ask me anything about the code structure, setup, or functionality!`, false);
+                        }, 500);
+                        
+                        // Add a cat emoji to the chat card
+                        const randomCatEmojis = ['🐱', '😸', '😹', '😻', '😽', '🙀', '😿', '😾', '🐈', '🐾'];
+                        const randomEmoji = randomCatEmojis[Math.floor(Math.random() * randomCatEmojis.length)];
+                        const cardBody = agentInterface.querySelector('.card-body');
+                        const emojiSpan = document.createElement('span');
+                        emojiSpan.style.position = 'absolute';
+                        emojiSpan.style.bottom = '10px';
+                        emojiSpan.style.right = '10px';
+                        emojiSpan.style.fontSize = '24px';
+                        emojiSpan.textContent = randomEmoji;
+                        cardBody.appendChild(emojiSpan);
+                        
+                        // Resize the chat container
+                        resizeChatContainer();
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to connect to repository'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                } finally {
+                    // Hide loading
+                    agentLoading.style.display = 'none';
+                }
+            });
+            
+            // Chat functionality
+            const chatInput = document.getElementById('chat-input');
+            const chatSubmit = document.getElementById('chat-submit');
+            const chatMessages = document.getElementById('chat-messages');
+            const chatLoading = document.getElementById('chat-loading');
+            
+            // Initialize repository data storage
+            let repoData = {
+                url: '',
+                content: {},
+                metadata: {},
+                summaries: {},
+                insights: ''
+            };
+            
+            // Store the data from workflow response for use in chat
+            document.getElementById('repoForm').addEventListener('submit', function() {
+                // This will be populated when the workflow response comes back
+                setTimeout(() => {
+                    const repoUrl = document.getElementById('repo_url').value;
+                    repoData.url = repoUrl;
+                }, 100);
+            });
+            
+            // Send a message when the send button is clicked
+            chatSubmit.addEventListener('click', sendMessage);
+            
+            // Also send a message when Enter is pressed in the input field
+            chatInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            function formatTimestamp() {
+                const now = new Date();
+                return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+            
+            function addMessage(text, isUser = false) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('chat-message');
+                messageElement.classList.add(isUser ? 'user-message' : 'bot-message');
+                
+                // Format message text to handle code blocks and line breaks
+                let formattedText = text;
+                
+                // Convert markdown code blocks to HTML
+                formattedText = formattedText.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
+                
+                // Convert inline code to HTML
+                formattedText = formattedText.replace(/`([^`]+)`/g, '<code>$1</code>');
+                
+                // Convert line breaks to <br>
+                formattedText = formattedText.replace(/\n/g, '<br>');
+                
+                messageElement.innerHTML = `
+                    ${formattedText}
+                    <span class="message-time">${formatTimestamp()}</span>
+                `;
+                
+                chatMessages.appendChild(messageElement);
+                
+                // Scroll to the bottom of the chat
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            async function sendMessage() {
+                const message = chatInput.value.trim();
+                if (!message) return;
+                
+                // Add user message to chat
+                addMessage(message, true);
+                
+                // Clear input field
+                chatInput.value = '';
+                
+                // Show loading indicator
+                chatLoading.classList.remove('d-none');
+                
+                // Collect data needed for the chat request
+                const repoUrl = repoData.url || document.getElementById('repo_url').value;
+                
+                // Collect summaries from displayed content
+                const summariesDiv = document.getElementById('summaries');
+                const summaries = {};
+                if (summariesDiv) {
+                    const summaryElements = summariesDiv.querySelectorAll('h6');
+                    summaryElements.forEach(el => {
+                        const filename = el.innerText;
+                        const summary = el.nextElementSibling.innerText;
+                        summaries[filename] = summary;
+                    });
+                }
+                
+                // Get insights
+                const insightsEl = document.getElementById('insights');
+                let insights = '';
+                if (insightsEl) {
+                    insights = insightsEl.innerText;
+                }
+                
+                try {
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            question: message,
+                            repo_url: repoUrl,
+                            repo_content: repoData.content,
+                            repo_metadata: repoData.metadata,
+                            summaries: summaries,
+                            insights: insights
+                        }),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        // Add bot response to chat
+                        addMessage(data.answer, false);
+                    } else {
+                        // Add error message
+                        addMessage('Sorry, I encountered an error: ' + (data.error || 'Unknown error'), false);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    addMessage('Sorry, I encountered a technical problem. Please try again.', false);
+                } finally {
+                    // Hide loading indicator
+                    chatLoading.classList.add('d-none');
+                }
+            }
+            
+            // Update stored repo data when workflow completes
+            window.updateRepoData = function(data) {
+                repoData = {
+                    url: document.getElementById('repo_url').value,
+                    content: data.repo_content || {},
+                    metadata: data.repo_metadata || {},
+                    summaries: data.summaries || {},
+                    insights: data.insights || ''
+                };
+                
+                // Add a welcome message from Repo Cat after analysis
+                if (chatMessages && chatMessages.childElementCount === 0) {
+                    setTimeout(() => {
+                        addMessage('😺 Meow! I\'ve analyzed this repository and I\'m ready to answer your questions about it. Ask me anything about the code structure, setup, or functionality!', false);
+                    }, 1000);
+                }
+            };
+            
+            // Add chat container resize functionality
+            function resizeChatContainer() {
+                const chatContainer = document.getElementById('chat-container');
+                const chatMessages = document.getElementById('chat-messages');
+                
+                if (!chatContainer || !chatMessages) return;
+                
+                // Get viewport height and calculate appropriate height
+                const viewportHeight = window.innerHeight;
+                
+                // Default to taking up 80% of viewport height minus space for headers
+                const headerHeight = document.querySelector('h1').offsetHeight + 
+                                    document.querySelector('.nav-tabs').offsetHeight +
+                                    document.querySelector('#agent-panel .card').offsetHeight + 60; // Add padding
+                
+                // Calculate the available height for chat
+                const availableHeight = viewportHeight - headerHeight;
+                const optimalHeight = Math.max(250, Math.min(availableHeight * 0.9, viewportHeight * 0.8));
+                
+                // Apply height to chat container
+                chatContainer.style.height = `${optimalHeight}px`;
+                
+                // Messages container should have some space for the input box
+                chatMessages.style.maxHeight = `${optimalHeight - 60}px`;
+            }
+            
+            // Call resize function when messages are added
+            const originalAddMessage = addMessage;
+            addMessage = function(text, isUser = false) {
+                originalAddMessage(text, isUser);
+                resizeChatContainer();
+            };
+            
+            // Call resize on window resize
+            window.addEventListener('resize', resizeChatContainer);
+            
+            // Initial resize
+            setTimeout(resizeChatContainer, 100);
+            
+            // GitHub Login Form Handling
+            const githubLoginForm = document.getElementById('github-login-form');
+            const loginStatusContainer = document.getElementById('login-status-container');
+            const logoutButton = document.getElementById('logout-button');
+            const githubUsername = document.getElementById('github-username');
+            
+            // Check if there are stored GitHub credentials
+            function checkStoredCredentials() {
+                const storedUsername = localStorage.getItem('github_username');
+                const storedToken = localStorage.getItem('github_token');
+                
+                if (storedUsername && storedToken) {
+                    // Display logged-in status
+                    githubUsername.textContent = storedUsername;
+                    loginStatusContainer.classList.remove('d-none');
+                    githubLoginForm.classList.add('d-none');
+                    
+                    // Update login tab to show login status
+                    const loginTab = document.getElementById('login-tab');
+                    loginTab.innerHTML = `<i class="fas fa-user-check me-2"></i>${storedUsername}`;
+                    
+                    return { username: storedUsername, token: storedToken };
+                } else {
+                    // Show login form
+                    loginStatusContainer.classList.add('d-none');
+                    githubLoginForm.classList.remove('d-none');
+                    
+                    // Reset login tab text
+                    const loginTab = document.getElementById('login-tab');
+                    loginTab.innerHTML = `<i class="fas fa-sign-in-alt me-2"></i>GitHub Login`;
+                    
+                    return null;
+                }
+            }
+            
+            // Handle GitHub login
+            githubLoginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('github_username').value;
+                const token = document.getElementById('github_token').value;
+                
+                if (!username || !token) {
+                    alert('Please enter both username and token');
+                    return;
+                }
+                
+                try {
+                    // Verify the credentials by making a test API call
+                    const response = await fetch('/verify_github_credentials', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            github_username: username,
+                            github_token: token
+                        }),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.valid) {
+                        // Store credentials in browser's localStorage
+                        localStorage.setItem('github_username', username);
+                        localStorage.setItem('github_token', token);
+                        
+                        // Update UI to show logged-in status
+                        githubUsername.textContent = username;
+                        loginStatusContainer.classList.remove('d-none');
+                        githubLoginForm.classList.add('d-none');
+                        
+                        // Update login tab to show login status
+                        const loginTab = document.getElementById('login-tab');
+                        loginTab.innerHTML = `<i class="fas fa-user-check me-2"></i>${username}`;
+                        
+                        alert('Successfully connected to GitHub!');
+                    } else {
+                        alert('Invalid GitHub credentials. Please check your username and token.');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error verifying GitHub credentials. Please try again.');
+                }
+            });
+            
+            // Handle logout
+            logoutButton.addEventListener('click', function() {
+                // Clear stored credentials
+                localStorage.removeItem('github_username');
+                localStorage.removeItem('github_token');
+                
+                // Update UI
+                loginStatusContainer.classList.add('d-none');
+                githubLoginForm.classList.remove('d-none');
+                
+                // Reset form fields
+                document.getElementById('github_username').value = '';
+                document.getElementById('github_token').value = '';
+                
+                // Reset login tab text
+                const loginTab = document.getElementById('login-tab');
+                loginTab.innerHTML = `<i class="fas fa-sign-in-alt me-2"></i>GitHub Login`;
+                
+                alert('You have been logged out from GitHub.');
+            });
+            
+            // Check for stored credentials on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                checkStoredCredentials();
+            });
+            
+            // Function to get stored GitHub credentials
+            function getGitHubCredentials() {
+                return {
+                    username: localStorage.getItem('github_username'),
+                    token: localStorage.getItem('github_token')
+                };
+            }
+            
+            // Update all API requests to include GitHub credentials if available
+            function addAuthToRequest(requestData) {
+                const credentials = getGitHubCredentials();
+                
+                if (credentials.username && credentials.token) {
+                    return {
+                        ...requestData,
+                        github_auth: {
+                            username: credentials.username,
+                            token: credentials.token
+                        }
+                    };
+                }
+                
+                return requestData;
+            }
+            
+            // PR Review Form Handling
+            const prForm = document.getElementById('prForm');
+            const prLoading = document.getElementById('pr-loading');
+            const prResults = document.getElementById('pr-results');
+            
+            prForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const prUrl = document.getElementById('pr_url').value;
+                const maxFiles = parseInt(document.getElementById('max_files').value);
+                const fileTypeFilter = document.getElementById('file_type_filter').value;
+                
+                if (!prUrl) {
+                    alert('Please enter a valid GitHub PR URL');
+                    return;
+                }
+                
+                // Map the file type filter selection to actual file extensions
+                let fileTypes = null;
+                switch(fileTypeFilter) {
+                    case 'python':
+                        fileTypes = ['.py'];
+                        break;
+                    case 'javascript':
+                        fileTypes = ['.js', '.jsx', '.ts', '.tsx'];
+                        break;
+                    case 'web':
+                        fileTypes = ['.html', '.css'];
+                        break;
+                    case 'data':
+                        fileTypes = ['.json', '.yml', '.yaml', '.sql'];
+                        break;
+                    case 'docs':
+                        fileTypes = ['.md', '.txt'];
+                        break;
+                    // 'all' or default: null = all code files
+                }
+                
+                // Show loading
+                prLoading.style.display = 'block';
+                prResults.classList.add('d-none');
+                
+                try {
+                    // Scroll to the loading indicator
+                    prLoading.scrollIntoView({ behavior: 'smooth' });
+                    
+                    // Prepare the request data
+                    const requestData = {
+                        pr_url: prUrl,
+                        max_files: maxFiles,
+                        file_types: fileTypes
+                    };
+                    
+                    // Add GitHub auth if available
+                    const authData = addAuthToRequest(requestData);
+                    
+                    const response = await fetch('/review_pr', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(authData),
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        // Display PR details
+                        document.getElementById('pr-title').textContent = data.pr_title;
+                        document.getElementById('pr-user').textContent = data.pr_user;
+                        document.getElementById('pr-target').textContent = data.target_branch;
+                        document.getElementById('pr-source').textContent = data.source_branch;
+                        document.getElementById('pr-files-count').textContent = data.changed_files_count + ' files analyzed';
+                        document.getElementById('pr-total-files').textContent = data.total_file_count + ' total files in PR';
+                        
+                        // Show or hide the file limit warning
+                        const fileWarning = document.getElementById('pr-file-limit-warning');
+                        if (data.total_file_count > data.changed_files_count) {
+                            fileWarning.style.display = 'block';
+                            fileWarning.querySelector('#pr-file-limit-message').textContent = 
+                                `This PR contains ${data.total_file_count} files, but only ${data.changed_files_count} were analyzed due to size limits. ` +
+                                `Try filtering by file type or increase the maximum files limit to get more comprehensive feedback.`;
+                        } else {
+                            fileWarning.style.display = 'none';
+                        }
+                        
+                        // Display the list of analyzed files
+                        const filesAnalyzedDiv = document.getElementById('pr-files-analyzed');
+                        if (data.analyzed_files && data.analyzed_files.length > 0) {
+                            // Group files by directory for better organization
+                            const filesByDir = {};
+                            data.analyzed_files.forEach(file => {
+                                const lastSlash = file.lastIndexOf('/');
+                                const dir = lastSlash > 0 ? file.substring(0, lastSlash) : '/';
+                                if (!filesByDir[dir]) {
+                                    filesByDir[dir] = [];
+                                }
+                                filesByDir[dir].push(file);
+                            });
+                            
+                            let filesHtml = '';
+                            Object.entries(filesByDir).forEach(([dir, files]) => {
+                                filesHtml += `<div class="mb-2"><strong>${dir || 'Root'}</strong>: `;
+                                filesHtml += files.map(file => {
+                                    const fileName = file.substring(file.lastIndexOf('/') + 1);
+                                    return `<span class="badge bg-light text-dark me-1">${fileName}</span>`;
+                                }).join('');
+                                filesHtml += '</div>';
+                            });
+                            
+                            filesAnalyzedDiv.innerHTML = filesHtml;
+                        } else {
+                            filesAnalyzedDiv.innerHTML = '<p class="text-muted">No files were analyzed. Try changing the file type filter.</p>';
+                        }
+                        
+                        // Display review
+                        const reviewContent = document.getElementById('pr-review');
+                        
+                        // Format the review content with markdown-like syntax
+                        let formattedReview = data.review;
+                        
+                        // Convert markdown headers to HTML
+                        formattedReview = formattedReview.replace(/## ([^\n]+)/g, '<h4>$1</h4>');
+                        
+                        // Convert markdown lists to HTML
+                        formattedReview = formattedReview.replace(/- ([^\n]+)/g, '<li>$1</li>');
+                        formattedReview = formattedReview.replace(/<li>/g, '<ul><li>');
+                        formattedReview = formattedReview.replace(/<\/li>\n/g, '</li></ul>\n');
+                        
+                        // Convert code blocks
+                        formattedReview = formattedReview.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
+                        
+                        // Convert inline code
+                        formattedReview = formattedReview.replace(/`([^`]+)`/g, '<code>$1</code>');
+                        
+                        // Handle line breaks
+                        formattedReview = formattedReview.replace(/\n/g, '<br>');
+                        
+                        reviewContent.innerHTML = formattedReview;
+                        
+                        // Show results
+                        prResults.classList.remove('d-none');
+                        
+                        // Scroll to results
+                        prResults.scrollIntoView({ behavior: 'smooth' });
+                        
+                        // Add a cat emoji to the end of each section
+                        const randomCatEmojis = ['🐱', '😸', '😹', '😻', '😽', '🙀', '😿', '😾', '🐈', '🐾'];
+                        document.querySelectorAll('#pr-results .card').forEach(card => {
+                            const randomEmoji = randomCatEmojis[Math.floor(Math.random() * randomCatEmojis.length)];
+                            const cardBody = card.querySelector('.card-body');
+                            const emojiSpan = document.createElement('span');
+                            emojiSpan.style.position = 'absolute';
+                            emojiSpan.style.bottom = '10px';
+                            emojiSpan.style.right = '10px';
+                            emojiSpan.style.fontSize = '24px';
+                            emojiSpan.textContent = randomEmoji;
+                            cardBody.appendChild(emojiSpan);
+                        });
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to review PR'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                } finally {
+                    // Hide loading
+                    prLoading.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
